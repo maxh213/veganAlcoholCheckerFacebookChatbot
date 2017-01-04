@@ -228,11 +228,10 @@ function sendTextMessage(sender, text) {
 	})
 }
 
-var sslPath = '/etc/letsencrypt/live/yourdomain.example.com/';
 
 var options = {  
-    key: fs.readFileSync(sslPath + 'privkey.pem'),
-    cert: fs.readFileSync(sslPath + 'fullchain.pem')
+    key: fs.readFileSync("fbsucks.site.key"),
+    cert: fs.readFileSync("fbsucks.site.pem")
 };
 
 var server = https.createServer(options, app);
