@@ -1,7 +1,7 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 var request = require('request');
-require("./2017products");
+require("./slimProducts");
 require("./secretConstants")
 var app = express();
 
@@ -31,7 +31,7 @@ var wineURL = "http://barnivore.com/wine.json";
 var liquorURL = "http://barnivore.com/liquor.json";
 var companyURLs = [];
 var products = [];
-//outputForProductsFile();
+outputForProductsFile();
 
 /**
 	This function is used to refresh the products file
@@ -72,7 +72,17 @@ function getProductJson(urls) {
 		if (error) console.log(error);
 		if (!error && response.statusCode === 200) {
 			console.log(url + " loaded!");
-			products.push(body.company.products);
+			companyProducts = [];
+			for (var i = 0; i < body.company.products.length; i++) {
+				companyProducts.push(
+					{
+						"product_name":body.company.products[i].product_name,
+						"status":body.company.products[i].status,
+						"country":body.company.products[i].country
+					}
+				);
+			}
+			products.push(companyProducts);
 			if (urls.length === 0) {
 				console.log("Product load complete.");
 				console.log(products); 
