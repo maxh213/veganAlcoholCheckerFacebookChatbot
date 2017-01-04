@@ -31,7 +31,7 @@ var wineURL = "http://barnivore.com/wine.json";
 var liquorURL = "http://barnivore.com/liquor.json";
 var companyURLs = [];
 var products = [];
-outputForProductsFile();
+//outputForProductsFile();
 
 /**
 	This function is used to refresh the products file
