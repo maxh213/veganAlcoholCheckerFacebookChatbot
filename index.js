@@ -5,7 +5,7 @@ require("./2017products");
 require("./secretConstants")
 var app = express();
 
-app.set('port', (process.env.PORT || 7777))
+app.set('port', (process.env.PORT || 3001))
 
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({extended: false}))
@@ -75,7 +75,7 @@ function getProductJson(urls) {
 			products.push(body.company.products);
 			if (urls.length === 0) {
 				console.log("Product load complete.");
-				console.log(products); UNCOMMENT THIS IF YOU WANT TO OUTPUT TO FILE
+				console.log(products); 
 				loading = false;
 			} else {
 				getProductJson(urls);
@@ -92,13 +92,11 @@ function searchForMatchingProducts(text) {
 	for (var i = 0; i < loadedProducts.length; i++) {
 		if (loadedProducts[i].length === 1) {
 			if (matches(loadedProducts[i][0].product_name, text)) {
-				//response += loadedProducts[i][0].product_name + " in " + loadedProducts[i][0].country + " is " + loadedProducts[i][0].status + ". ";
 				responseData.push(loadedProducts[i][0]);
 			}
 		} else {
 			for (j = 0; j < loadedProducts[i].length; j++) {
 				if (matches(loadedProducts[i][j].product_name, text)) {
-					//response += loadedProducts[i][j].product_name + " in " + loadedProducts[i][j].country + " is " + loadedProducts[i][j].status + ". ";
 					responseData.push(loadedProducts[i][j]);
 				}
 			}
