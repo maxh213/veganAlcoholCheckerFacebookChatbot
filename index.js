@@ -3,7 +3,8 @@ var bodyParser = require('body-parser');
 var request = require('request');
 require("./slimProducts");
 require("./secretConstants")
-var https = require('https'),
+var fs = require('fs')
+	https = require('https'),
     pem = require('pem'),
     app = express();
 
