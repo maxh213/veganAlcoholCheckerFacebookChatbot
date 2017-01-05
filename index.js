@@ -5,6 +5,7 @@ require("./slimProducts");
 require("./secretConstants")
 var fs = require('fs')
     app = express();
+URL = 'vacfb.site/a?n=';
 
 app.set('port', (process.env.PORT || 80))
 
@@ -136,16 +137,18 @@ function generateResponseString(responseData) {
 function filterResponseData(responseData) {
 	var cleanResponseData = [];
 	for (var i = 0; i < responseData.length; i++) {
-		if (!isDuplicate(cleanResponseData, responseData[i].id)) {
+		if (!isDuplicate(cleanResponseData, responseData[i])) {
 			cleanResponseData.push(responseData[i]);
 		}
 	}
 	return cleanResponseData;
 }
 
-function isDuplicate(cleanResponseData, responseDataId) {
+function isDuplicate(cleanResponseData, responseData) {
 	for (var i = 0; i < cleanResponseData.length; i++) {
-		if (cleanResponseData[i].id === responseDataId) return true;
+		if (cleanResponseData[i].product_name === responseData.product_name 
+			&& cleanResponseData[i].status === responseData.status
+			&& cleanResponseData[i].country === responseData.country) return true;
 	}
 	return false;
 }
@@ -197,7 +200,8 @@ app.post('/webhook/', function (req, res) {
 			var response = searchForMatchingProducts(text);
 			console.log(response.length)
 			if (response.length > 20) {
-				sendTextMessage(sender, "Sorry but I know a lot of alcohol with that in the name, could you be more specific?");
+				var messageResponse = "I know a lot of drinks with that name so I made a weblink for you " + URL + event.message.text;
+				sendTextMessage(sender, messageResponse);
 			} else {
 				for (var i = 0; i < response.length; i++) sendTextMessage(sender, response[i]);
 			} 
@@ -219,9 +223,6 @@ function sendTextMessage(sender, text) {
 			message: messageData,
 		}
 	}, function(error, response, body) {
-		console.log(response);
-		console.log(body);
-		console.log("message sent fail " + error);
 		if (error) {
 			console.log('Error sending messages: ', error)
 		} else if (response.body.error) {
