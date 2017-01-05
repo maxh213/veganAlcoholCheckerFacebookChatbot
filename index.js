@@ -4,11 +4,9 @@ var request = require('request');
 require("./slimProducts");
 require("./secretConstants")
 var fs = require('fs')
-	https = require('https'),
-    pem = require('pem'),
     app = express();
 
-app.set('port', (process.env.PORT || 3001))
+app.set('port', (process.env.PORT || 80))
 
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({extended: false}))
@@ -197,6 +195,7 @@ app.post('/webhook/', function (req, res) {
 			text = text.replace('Guiness','guinness');
 			text = text.replace('absolute vodka','absolut vodka');
 			var response = searchForMatchingProducts(text);
+			console.log(response.length)
 			if (response.length > 20) {
 				sendTextMessage(sender, "Sorry but I know a lot of alcohol with that in the name, could you be more specific?");
 			} else {
@@ -220,6 +219,8 @@ function sendTextMessage(sender, text) {
 			message: messageData,
 		}
 	}, function(error, response, body) {
+		console.log(response);
+		console.log(body);
 		console.log("message sent fail " + error);
 		if (error) {
 			console.log('Error sending messages: ', error)
@@ -229,15 +230,7 @@ function sendTextMessage(sender, text) {
 	})
 }
 
-
-var options = {  
-    key: fs.readFileSync("fbsucks.site.key"),
-    cert: fs.readFileSync("fbsucks.site.pem")
-};
-
-var server = https.createServer(options, app);
-
-server.listen(app.get('port'), function(){
+app.listen(app.get('port'), function(){
     console.log('running on port', app.get('port'))
 });
 
