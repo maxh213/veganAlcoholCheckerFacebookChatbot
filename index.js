@@ -5,7 +5,7 @@ require("./slimProducts");
 require("./secretConstants")
 var fs = require('fs')
     app = express();
-URL = 'vacfb.site/a?n=';
+URL = 'www.vacfb.site/a?n=';
 
 app.set('port', (process.env.PORT || 80))
 
