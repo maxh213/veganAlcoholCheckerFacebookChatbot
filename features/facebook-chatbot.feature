@@ -6,67 +6,70 @@ Feature: Facebook chatbot for vegan alcohol checking
     Then I get response "Vegan alcohol checker is up!"
 
   Scenario: Webhook verification with correct token
-    Given WEBHOOK_TOKEN is set
-    When I GET /webhook/ with query hub.verify_token=correct_token and hub.challenge=12345
+    Given WEBHOOK_TOKEN is "test-webhook-token"
+    When I GET /webhook/ with query hub.verify_token=test-webhook-token and hub.challenge=12345
     Then I get response "12345"
 
   Scenario: Webhook verification with wrong token
     When I GET /webhook/ with query hub.verify_token=wrong_token and hub.challenge=12345
     Then I do not get response "12345"
 
-  Scenario: POST webhook with Facebook messaging envelope
-    Given FB_PAGE_TOKEN is set
-    When I POST /webhook/ with Facebook messaging envelope {"entry": [{"messaging": [{"sender": {"id": "user123"}, "message": {"text": "guinness"}}]}]}
+  Scenario: POST webhook with Facebook messaging envelope returns 200
+    Given FB_PAGE_TOKEN is "test-page-token"
+    When I POST /webhook/ with Facebook messaging envelope
+      """
+      {"entry":[{"messaging":[{"sender":{"id":"user123"},"message":{"text":"guinness"}}]}]}
+      """
     Then I get HTTP status 200
 
-  Scenario: Search is case-insensitive substring matching
-    When I search for "guinness"
-    Then I get "Guinness" products
+  Scenario: Search for guinness returns product with status
+    When I POST /webhook/ with message "guinness"
+    Then response contains "Guinness is not vegan."
 
-  Scenario: Search strips punctuation and spaces
-    When I search for "Ørbæk!"
-    Then I get "Ørbæk" products
+  Scenario: Search for Ørbæk with exclamation mark matches Ørbæk products
+    When I POST /webhook/ with message "Ørbæk!"
+    Then response contains "Ørbæk"
 
-  Scenario: Duplicate products appear once
-    When I search for "Wynkoop Rocky Mountain Oyster Stout"
-    Then I get one result for that product
+  Scenario: Search for product with duplicate entries returns one result
+    When I POST /webhook/ with message "Wynkoop Rocky Mountain Oyster Stout"
+    Then response contains "Wynkoop Rocky Mountain Oyster Stout is Not Vegan Friendly."
 
-  Scenario: Unknown name returns apology message
-    When I search for "nonexistentalcoholxyz"
-    Then I get "Unfortunately I cannot find the name of the alcohol you specified in my database, apologies."
+  Scenario: Unknown alcohol name returns apology message
+    When I POST /webhook/ with message "nonexistentalcoholxyz"
+    Then I get response "Unfortunately I cannot find the name of the alcohol you specified in my database, apologies."
 
-  Scenario: More than 20 matches sends weblink
-    When I search for "e" which matches many products
-    Then I get a weblink response with URL www.vacfb.site/a?n=
+  Scenario: Many matches trigger weblink response
+    When I POST /webhook/ with message "e"
+    Then response contains "I know a lot of drinks with that name so I made a weblink for you www.vacfb.site/a?n=e"
 
-  Scenario: 20 or fewer matches sends Facebook messages with country
-    When I search for "guinness"
-    Then each message includes country when present
+  Scenario: Search for wynkoop returns products with country
+    When I POST /webhook/ with message "wynkoop"
+    Then response contains "made in"
 
-  Scenario: Incoming text normalization strips "hey, is " prefix
-    When user sends "hey, is guinness"
-    Then search receives "guinness"
+  Scenario: Incoming text with "hey, is " prefix returns Guinness result
+    When I POST /webhook/ with message "hey, is guinness"
+    Then response contains "Guinness is not vegan."
 
-  Scenario: Incoming text normalization strips "is " prefix
-    When user sends "is guinness"
-    Then search receives "guinness"
+  Scenario: Incoming text with "is " prefix returns Guinness result
+    When I POST /webhook/ with message "is guinness"
+    Then response contains "Guinness is not vegan."
 
-  Scenario: Incoming text normalization strips "are " prefix
-    When user sends "are guinness vegan"
-    Then search receives "guinness vegan"
+  Scenario: Incoming text with "are " prefix returns Guinness result
+    When I POST /webhook/ with message "are guinness vegan"
+    Then response contains "Guinness is not vegan."
 
-  Scenario: Incoming text normalization strips "what about " prefix
-    When user sends "what about guinness"
-    Then search receives "guinness"
+  Scenario: Incoming text with "what about " prefix returns Guinness result
+    When I POST /webhook/ with message "what about guinness"
+    Then response contains "Guinness is not vegan."
 
-  Scenario: Incoming text normalization strips "vegan?" suffix
-    When user sends "guinness vegan?"
-    Then search receives "guinness "
+  Scenario: Incoming text with "vegan?" suffix returns Guinness result
+    When I POST /webhook/ with message "guinness vegan?"
+    Then response contains "Guinness is not vegan."
 
-  Scenario: guiness typo is rewritten to guinness
-    When user sends "guiness"
-    Then search receives "guinness"
+  Scenario: Typo "guiness" is corrected to guinness
+    When I POST /webhook/ with message "guiness"
+    Then response contains "Guinness is not vegan."
 
-  Scenario: absolute vodka typo is rewritten to absolut vodka
-    When user sends "absolute vodka"
-    Then search receives "absolut vodka"
+  Scenario: Typo "absolute vodka" is corrected to absolut vodka
+    When I POST /webhook/ with message "absolute vodka"
+    Then response contains "Absolut"

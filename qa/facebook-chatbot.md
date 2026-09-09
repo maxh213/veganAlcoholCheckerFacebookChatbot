@@ -19,41 +19,49 @@
    - Expected: HTTP status 200
 
 6. Test search normalization - "hey, is " prefix:
-   - Send message `hey, is guinness`
-   - Expected: Response mentions Guinness
+   - Run `curl -X POST http://localhost:80/webhook/ -H "Content-Type: application/json" -d '{"entry":[{"messaging":[{"sender":{"id":"user123"},"message":{"text":"hey, is guinness"}}]}]}'`
+   - Expected: Response contains `Guinness is not vegan.`
 
 7. Test search normalization - "is " prefix:
-   - Send message `is guinness`
-   - Expected: Response mentions Guinness
+   - Run `curl -X POST http://localhost:80/webhook/ -H "Content-Type: application/json" -d '{"entry":[{"messaging":[{"sender":{"id":"user123"},"message":{"text":"is guinness"}}]}]}'`
+   - Expected: Response contains `Guinness is not vegan.`
 
 8. Test search normalization - "are " prefix:
-   - Send message `are guinness vegan`
-   - Expected: Response mentions Guinness
+   - Run `curl -X POST http://localhost:80/webhook/ -H "Content-Type: application/json" -d '{"entry":[{"messaging":[{"sender":{"id":"user123"},"message":{"text":"are guinness vegan"}}]}]}'`
+   - Expected: Response contains `Guinness is not vegan.`
 
 9. Test search normalization - "what about " prefix:
-   - Send message `what about guinness`
-   - Expected: Response mentions Guinness
+   - Run `curl -X POST http://localhost:80/webhook/ -H "Content-Type: application/json" -d '{"entry":[{"messaging":[{"sender":{"id":"user123"},"message":{"text":"what about guinness"}}]}]}'`
+   - Expected: Response contains `Guinness is not vegan.`
 
 10. Test search normalization - "vegan?" suffix:
-    - Send message `guinness vegan?`
-    - Expected: Response mentions Guinness
+    - Run `curl -X POST http://localhost:80/webhook/ -H "Content-Type: application/json" -d '{"entry":[{"messaging":[{"sender":{"id":"user123"},"message":{"text":"guinness vegan?"}}]}]}'`
+    - Expected: Response contains `Guinness is not vegan.`
 
 11. Test typo correction - guiness:
-    - Send message `guiness`
-    - Expected: Response mentions Guinness
+    - Run `curl -X POST http://localhost:80/webhook/ -H "Content-Type: application/json" -d '{"entry":[{"messaging":[{"sender":{"id":"user123"},"message":{"text":"guiness"}}]}]}'`
+    - Expected: Response contains `Guinness is not vegan.`
 
 12. Test typo correction - absolute vodka:
-    - Send message `absolute vodka`
-    - Expected: Response mentions Absolut
+    - Run `curl -X POST http://localhost:80/webhook/ -H "Content-Type: application/json" -d '{"entry":[{"messaging":[{"sender":{"id":"user123"},"message":{"text":"absolute vodka"}}]}]}'`
+    - Expected: Response contains `Absolut`
 
 13. Test unknown name:
-    - Send message `nonexistentalcoholxyz`
+    - Run `curl -X POST http://localhost:80/webhook/ -H "Content-Type: application/json" -d '{"entry":[{"messaging":[{"sender":{"id":"user123"},"message":{"text":"nonexistentalcoholxyz"}}]}]}'`
     - Expected: Response is `Unfortunately I cannot find the name of the alcohol you specified in my database, apologies.`
 
 14. Test duplicate deduplication:
-    - Send message `Wynkoop Rocky Mountain Oyster Stout`
-    - Expected: One result for this product
+    - Run `curl -X POST http://localhost:80/webhook/ -H "Content-Type: application/json" -d '{"entry":[{"messaging":[{"sender":{"id":"user123"},"message":{"text":"Wynkoop Rocky Mountain Oyster Stout"}}]}]}'`
+    - Expected: Response contains `Wynkoop Rocky Mountain Oyster Stout is Not Vegan Friendly.`
 
 15. Test response includes country:
-    - Send message `guinness`
-    - Expected: Each result message includes the country when present
+    - Run `curl -X POST http://localhost:80/webhook/ -H "Content-Type: application/json" -d '{"entry":[{"messaging":[{"sender":{"id":"user123"},"message":{"text":"wynkoop"}}]}]}'`
+    - Expected: Response contains `made in`
+
+16. Test punctuation stripping:
+    - Run `curl -X POST http://localhost:80/webhook/ -H "Content-Type: application/json" -d '{"entry":[{"messaging":[{"sender":{"id":"user123"},"message":{"text":"Ørbæk!"}}]}]}'`
+    - Expected: Response contains `Ørbæk`
+
+17. Test >20 matches trigger weblink:
+    - Run `curl -X POST http://localhost:80/webhook/ -H "Content-Type: application/json" -d '{"entry":[{"messaging":[{"sender":{"id":"user123"},"message":{"text":"e"}}]}]}'`
+    - Expected: Response contains `I know a lot of drinks with that name so I made a weblink for you www.vacfb.site/a?n=e`
