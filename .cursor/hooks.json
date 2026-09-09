@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "stop": [
+      {
+        "command": "marestail gate --hook",
+        "timeout": 900,
+        "loop_limit": 5
+      }
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "marestail-gate": {
+    "Stop": [
+      {
+        "type": "command",
+        "command": "marestail gate --hook",
+        "timeout": 900
+      }
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+[git]
+base = "origin/master"
+
+[ts]
+root = "."
+source = "index.js"
+sources = ["."]
+crap_max = 4
+runner = "vitest"
+tsconfig = "tsconfig.app.json"
+
+[sonar]
+project_key = "veganalcoholchecker-facebook"
+project_name = "Vegan Alcohol Checker Facebook Chatbot"
+exclusions = ["node_modules/**", "slimProducts.js"]
+
+[deadcode]
+ts_kinds = ["files", "exports", "types"]
+
+[docs]
+files = ["README.md"]
+routes_file = "README.md"
+sources = ["."]
+path_prefixes = ["tasks/"]
+ignore_env = ["PORT"]
+
+[comments]
+paths = ["."]
+
+[qa]
+cmd = "npx vitest run qa"
+cwd = "."

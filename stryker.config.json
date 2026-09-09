@@ -1,0 +1,7 @@
+{
+  "mutate": ["index.js"],
+  "testRunner": "vitest",
+  "coverageAnalysis": "perTest",
+  "reporters": ["json", "progress"],
+  "timeoutMS": 60000
+}
