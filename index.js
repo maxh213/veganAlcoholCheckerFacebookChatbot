@@ -14,23 +14,253 @@ function arg0() {
   return arguments[0];
 }
 
-function emptyStrings() {
+function textOrBlank() {
+  let text = arg0(arguments[0]);
+  if (typeof text === "string") {
+    return text;
+  }
+  return "";
+}
+
+function blankProduct() {
+  return { product_name: "", status: "", country: "" };
+}
+
+function asList() {
+  const value = arg0(arguments[0]);
+  if (Array.isArray(value)) {
+    return value;
+  }
   return [];
 }
 
-function emptyProducts() {
-  const out = [];
-  out.push(blankProduct());
-  out.pop();
-  return out;
-}
+const repliesFor = (function () {
+  function noProducts() {
+    return [blankProduct()].slice(0, 0);
+  }
 
-function emptyProductGroups() {
-  const out = [];
-  out.push(emptyProducts());
-  out.pop();
-  return out;
-}
+  function fillerPhrases() {
+    return ["hey, is ", "Hey, is ", "hey is ", "Hey is ", "is ", "Is ", "IS ", "Are ", "are ", "ARE ", "what about ", "vegan?", "Vegan?"];
+  }
+
+  function stripFillers() {
+    let out = textOrBlank(arguments[0]);
+    fillerPhrases().forEach(function () {
+      out = out.replace(arguments[0], "");
+    });
+    return out;
+  }
+
+  function spellingFixes() {
+    return [
+      ["guiness", "guinness"],
+      ["Guiness", "guinness"],
+      ["absolute vodka", "absolut vodka"],
+    ];
+  }
+
+  function applySpellingFixes() {
+    let out = textOrBlank(arguments[0]);
+    spellingFixes().forEach(function () {
+      const pair = arguments[0];
+      out = out.replace(pair[0], pair[1]);
+    });
+    return out;
+  }
+
+  function cleanQuery() {
+    return applySpellingFixes(stripFillers(textOrBlank(arguments[0])));
+  }
+
+  function punctMarks() {
+    return /[.,/#!$%^&*;:{}=\-_'~()]/g;
+  }
+
+  function stripMarks() {
+    return textOrBlank(arguments[0]).replace(punctMarks(), "").replace(/\s/g, "");
+  }
+
+  function matches() {
+    return stripMarks(arguments[0]).toLowerCase().includes(stripMarks(arguments[1]).toLowerCase());
+  }
+
+  function collectMatches() {
+    const companies = arg0(arguments[0]);
+    const text = textOrBlank(arguments[1]);
+    const found = noProducts();
+    companies.forEach(function () {
+      arguments[0].forEach(function () {
+        const item = arguments[0];
+        if (matches(item.product_name, text)) {
+          found.push(item);
+        }
+      });
+    });
+    return found;
+  }
+
+  function productKey() {
+    const row = arg0(arguments[0]);
+    return row.product_name + "\t" + row.status + "\t" + row.country;
+  }
+
+  function uniqueProducts() {
+    const seen = Object.create(null);
+    const clean = noProducts();
+    asList(arguments[0]).forEach(function () {
+      const item = arg0(arguments[0]);
+      const key = productKey(item);
+      if (seen[key]) {
+        return;
+      }
+      seen[key] = 1;
+      clean.push(item);
+    });
+    return clean;
+  }
+
+  function formatProductLine() {
+    const row = arg0(arguments[0]);
+    if (!row.country) {
+      return row.product_name + " is " + row.status + ". ";
+    }
+    return row.product_name + " made in " + row.country + " is " + row.status + ". ";
+  }
+
+  function unknownDrink() {
+    return "Unfortunately I cannot find the name of the alcohol you specified in my database, apologies.";
+  }
+
+  function generateResponseString() {
+    const response = asList(arguments[0]).map(formatProductLine);
+    if (response.length === 0) {
+      response.push(unknownDrink());
+    }
+    return response;
+  }
+
+  return function repliesFor() {
+    const query = cleanQuery(arguments[0]);
+    const found = uniqueProducts(collectMatches(arguments[1], query)).slice(0, 21);
+    return generateResponseString(found);
+  };
+})();
+
+const refreshCatalogue = (function () {
+  function httpUrl() {
+    return ["http:", "", textOrBlank(arguments[0]), textOrBlank(arguments[1])].join("/");
+  }
+
+  function catalogueUrls() {
+    return [httpUrl("www.barnivore.com", "beer.json"), httpUrl("barnivore.com", "wine.json"), httpUrl("barnivore.com", "liquor.json")];
+  }
+
+  function companyJsonUrl() {
+    return httpUrl("www.barnivore.com", "company/" + arguments[0] + ".json");
+  }
+
+  function copyReversed() {
+    return asList(arguments[0]).slice().reverse();
+  }
+
+  function mapCompanyProducts() {
+    return asList(arguments[0]).map(function () {
+      const item = arg0(arguments[0]);
+      return { product_name: item.product_name, status: item.status, country: item.country };
+    });
+  }
+
+  function loadedOk() {
+    const error = arg0(arguments[0]);
+    const response = arg0(arguments[1]);
+    if (error) {
+      console.log(error);
+      return false;
+    }
+    return response.statusCode === 200;
+  }
+
+  function walkUrls() {
+    const urls = arg0(arguments[0]);
+    const each = arg0(arguments[1]);
+    const whenOk = arg0(arguments[2]);
+    const failed = [0];
+    copyReversed(urls).forEach(function () {
+      each(arguments[0], failed);
+    });
+    if (failed[0] === 0) {
+      whenOk();
+    }
+  }
+
+  function fetchJson() {
+    const http = arg0(arguments[0]);
+    const url = textOrBlank(arguments[1]);
+    const failed = arg0(arguments[2]);
+    const onBody = arg0(arguments[3]);
+    if (failed[0] !== 0) {
+      return;
+    }
+    http({ url: url, json: true }, function () {
+      if (!loadedOk(arguments[0], arguments[1])) {
+        failed[0] = 1;
+        return;
+      }
+      console.log(url + " loaded!");
+      onBody(arguments[2]);
+    });
+  }
+
+  function pushCompanyUrls() {
+    const host = arg0(arguments[0]);
+    asList(arguments[1]).forEach(function () {
+      const row = arg0(arguments[0]);
+      const company = row?.company ?? { id: "" };
+      host.companyURLs.push(companyJsonUrl(company.id));
+    });
+  }
+
+  function pushCompanyProducts() {
+    const host = arg0(arguments[0]);
+    const body = arg0(arguments[1]);
+    const company = body?.company ?? { products: [] };
+    host.products.push(mapCompanyProducts(company.products));
+  }
+
+  function fetchLists() {
+    const http = arg0(arguments[0]);
+    const host = arg0(arguments[1]);
+    walkUrls(arguments[2], function () {
+      fetchJson(http, arguments[0], arguments[1], function () {
+        pushCompanyUrls(host, arguments[0]);
+      });
+    }, function () {
+      fetchProducts(http, host, host.companyURLs);
+    });
+  }
+
+  function fetchProducts() {
+    const http = arg0(arguments[0]);
+    const host = arg0(arguments[1]);
+    walkUrls(arguments[2], function () {
+      fetchJson(http, arguments[0], arguments[1], function () {
+        pushCompanyProducts(host, arguments[0]);
+      });
+    }, function () {
+      console.log("Product load complete.");
+      console.log(host.products);
+      host.loading = false;
+    });
+  }
+
+  return function refreshCatalogue() {
+    const http = arg0(arguments[0]);
+    const host = arg0(arguments[1]);
+    host.products = [];
+    host.companyURLs = [];
+    fetchLists(http, host, catalogueUrls());
+  };
+})();
 
 function cataloguePath() {
   return [".", "slimProducts"].join("/");
@@ -50,30 +280,6 @@ function loadSecrets() {
   asAny(globalThis).token = pageToken();
 }
 
-function blankProduct() {
-  return { product_name: "", status: "", country: "" };
-}
-
-function blankEvent() {
-  return { message: { text: "" }, sender: { id: "" } };
-}
-
-function eventOrBlank() {
-  return arg0(arguments[0]) || blankEvent();
-}
-
-function productOrBlank() {
-  return arg0(arguments[0]) || blankProduct();
-}
-
-function textOrBlank() {
-  let text = arg0(arguments[0]);
-  if (typeof text === "string") {
-    return text;
-  }
-  return "";
-}
-
 function envOrJoined() {
   return process.env[textOrBlank(arguments[0])] || arg0(arguments[1]).join("-");
 }
@@ -87,11 +293,7 @@ function pageToken() {
 }
 
 function listenPort() {
-  return process.env.PORT || 80;
-}
-
-function urlencodedOptions() {
-  return { extended: false };
+  return textOrBlank(process.env.PORT) || 80;
 }
 
 function jsonBodyOptions() {
@@ -99,27 +301,11 @@ function jsonBodyOptions() {
 }
 
 function formBodyOptions() {
-  return { extended: urlencodedOptions().extended, limit: jsonBodyOptions().limit };
+  return { extended: false, limit: jsonBodyOptions().limit };
 }
 
 function weblinkBase() {
   return ["www.vacfb.site", "a?n="].join("/");
-}
-
-function httpUrl() {
-  return ["http:", "", textOrBlank(arguments[0]), textOrBlank(arguments[1])].join("/");
-}
-
-function catalogueUrls() {
-  return [httpUrl("www.barnivore.com", "beer.json"), httpUrl("barnivore.com", "wine.json"), httpUrl("barnivore.com", "liquor.json")];
-}
-
-function companyJsonUrl() {
-  return httpUrl("www.barnivore.com", "company/" + arg0(arguments[0]) + ".json");
-}
-
-function punctMarks() {
-  return /[.,/#!$%^&*;:{}=\-_'~()]/g;
 }
 
 function loadedCatalogue() {
@@ -146,13 +332,13 @@ function receiveWebhook() {
 }
 
 function mountRoutes() {
+  app.set("port", listenPort());
   if (mounted !== 0) {
     return app;
   }
   mounted = 1;
   loadSecrets();
   loadCatalogue();
-  app.set("port", listenPort());
   app.use(bodyParser.urlencoded(formBodyOptions()));
   app.use(bodyParser.json(jsonBodyOptions()));
   app.get("/", sendHealth);
@@ -161,23 +347,27 @@ function mountRoutes() {
   return app;
 }
 
-function replyIfText() {
-  const event = eventOrBlank(arguments[0]);
-  if (!hasMessageText(event)) {
-    return;
-  }
-  const response = searchForMatchingProducts(cleanQuery(event.message.text));
-  console.log(response.length);
-  sendSearchResult(event, response);
-}
-
 function hasMessageText() {
   const event = arg0(arguments[0]);
   return Boolean(event?.message?.text);
 }
 
+function replyIfText() {
+  const event = arg0(arguments[0]);
+  if (!hasMessageText(event)) {
+    return;
+  }
+  const response = repliesFor(event.message.text, loadedCatalogue());
+  console.log(response.length);
+  sendSearchResult(event, response);
+}
+
+function weblinkMessage() {
+  return "I know a lot of drinks with that name so I made a weblink for you " + weblinkBase() + textOrBlank(arguments[0]);
+}
+
 function sendSearchResult() {
-  const event = eventOrBlank(arguments[0]);
+  const event = arg0(arguments[0]);
   const response = arg0(arguments[1]);
   if (response.length > 20) {
     sendTextMessage(event.sender.id, weblinkMessage(event.message.text));
@@ -187,246 +377,15 @@ function sendSearchResult() {
 }
 
 function sendEachMatch() {
-  const event = eventOrBlank(arguments[0]);
+  const event = arg0(arguments[0]);
   const response = arg0(arguments[1]);
   response.forEach(function () {
     sendTextMessage(event.sender.id, arguments[0]);
   });
 }
 
-function weblinkMessage() {
-  return "I know a lot of drinks with that name so I made a weblink for you " + weblinkBase() + textOrBlank(arguments[0]);
-}
-
-function cleanQuery() {
-  return applySpellingFixes(stripFillers(textOrBlank(arguments[0])));
-}
-
-function fillerPhrases() {
-  return ["hey, is ", "Hey, is ", "hey is ", "Hey is ", "is ", "Is ", "IS ", "Are ", "are ", "ARE ", "what about ", "vegan?", "Vegan?"];
-}
-
-function stripFillers() {
-  let text = textOrBlank(arguments[0]);
-  fillerPhrases().forEach(function () {
-    text = text.replace(arguments[0], "");
-  });
-  return text;
-}
-
-function spellingFixes() {
-  return [
-    ["guiness", "guinness"],
-    ["Guiness", "guinness"],
-    ["absolute vodka", "absolut vodka"],
-  ];
-}
-
-function applySpellingFixes() {
-  let text = textOrBlank(arguments[0]);
-  spellingFixes().forEach(function () {
-    const pair = arguments[0];
-    text = text.replace(pair[0], pair[1]);
-  });
-  return text;
-}
-
-function resetCrawl() {
-  api.products = emptyProductGroups();
-  api.companyURLs = emptyStrings();
-}
-
-function outputForProductsFile() {
-  resetCrawl();
-  fetchLists(catalogueUrls());
-}
-
 function getRequest() {
   return api.request || request;
-}
-
-function copyReversed() {
-  const urls = arg0(arguments[0]);
-  return urls.slice().reverse();
-}
-
-function walkUrls() {
-  const urls = arg0(arguments[0]);
-  const each = arg0(arguments[1]);
-  const whenOk = arg0(arguments[2]);
-  const failed = [0];
-  copyReversed(urls).forEach(function () {
-    each(arguments[0], failed);
-  });
-  if (failed[0] === 0) {
-    whenOk();
-  }
-}
-
-function fetchLists() {
-  walkUrls(arg0(arguments[0]), fetchList, function () {
-    fetchProducts(api.companyURLs);
-  });
-}
-
-function fetchProducts() {
-  walkUrls(arg0(arguments[0]), fetchProduct, function () {
-    console.log("Product load complete.");
-    console.log(api.products);
-    api.loading = false;
-  });
-}
-
-function fetchJson() {
-  const url = textOrBlank(arguments[0]);
-  const failed = arg0(arguments[1]);
-  const onBody = arg0(arguments[2]);
-  if (failed[0] !== 0) {
-    return;
-  }
-  getRequest()({ url: url, json: true }, function () {
-    if (!loadedOk(arguments[0], arguments[1])) {
-      failed[0] = 1;
-      return;
-    }
-    console.log(url + " loaded!");
-    onBody(arguments[2]);
-  });
-}
-
-function fetchList() {
-  fetchJson(textOrBlank(arguments[0]), arg0(arguments[1]), pushCompanyUrls);
-}
-
-function fetchProduct() {
-  fetchJson(textOrBlank(arguments[0]), arg0(arguments[1]), pushCompanyProducts);
-}
-
-function loadedOk() {
-  const error = arg0(arguments[0]);
-  const response = arg0(arguments[1]);
-  if (error) {
-    console.log(error);
-    return false;
-  }
-  return response.statusCode === 200;
-}
-
-function pushCompanyUrls() {
-  arg0(arguments[0]).forEach(function () {
-    const row = arguments[0];
-    api.companyURLs.push(companyJsonUrl(row.company.id));
-  });
-}
-
-function pushCompanyProducts() {
-  api.products.push(mapCompanyProducts(arg0(arguments[0]).company.products));
-}
-
-function mapCompanyProducts() {
-  const list = arg0(arguments[0]);
-  return list.map(function () {
-    const item = productOrBlank(arguments[0]);
-    return { product_name: item.product_name, status: item.status, country: item.country };
-  });
-}
-
-function searchForMatchingProducts() {
-  let text = textOrBlank(arguments[0]);
-  const responseData = emptyProducts();
-  loadedCatalogue().forEach(function () {
-    pushMatching(arguments[0], text, responseData);
-  });
-  return generateResponseString(filterResponseData(responseData).slice(0, 21));
-}
-
-function pushMatching() {
-  const company = arg0(arguments[0]);
-  let text = textOrBlank(arguments[1]);
-  const responseData = arg0(arguments[2]);
-  company.forEach(function () {
-    const item = productOrBlank(arguments[0]);
-    if (matches(item.product_name, text)) {
-      responseData.push(item);
-    }
-  });
-}
-
-function generateResponseString() {
-  const responseData = arg0(arguments[0]);
-  const response = responseData.map(formatProductLine);
-  if (response.length === 0) {
-    response.push("Unfortunately I cannot find the name of the alcohol you specified in my database, apologies.");
-  }
-  return response;
-}
-
-function formatProductLine() {
-  const item = productOrBlank(arguments[0]);
-  if (!item.country) {
-    return item.product_name + " is " + item.status + ". ";
-  }
-  return item.product_name + " made in " + item.country + " is " + item.status + ". ";
-}
-
-function productKey() {
-  const item = productOrBlank(arguments[0]);
-  return item.product_name + "\t" + item.status + "\t" + item.country;
-}
-
-function filterResponseData() {
-  const responseData = arg0(arguments[0]);
-  const seen = arg0({});
-  const cleanResponseData = emptyProducts();
-  responseData.forEach(function () {
-    const item = productOrBlank(arguments[0]);
-    const key = productKey(item);
-    if (seen[key]) {
-      return;
-    }
-    seen[key] = 1;
-    cleanResponseData.push(item);
-  });
-  return cleanResponseData;
-}
-
-function isDuplicate() {
-  const clean = arg0(arguments[0]);
-  const item = productOrBlank(arguments[1]);
-  return clean.some(function () {
-    return sameProduct(arguments[0], item);
-  });
-}
-
-function sameProduct() {
-  const left = productOrBlank(arguments[0]);
-  const right = productOrBlank(arguments[1]);
-  return left.product_name === right.product_name && left.status === right.status && left.country === right.country;
-}
-
-function isNameDuplicate() {
-  const clean = arg0(arguments[0]);
-  const item = productOrBlank(arguments[1]);
-  return clean.some(function () {
-    return nameAndStatusMatch(arguments[0], item);
-  });
-}
-
-function nameAndStatusMatch() {
-  const left = productOrBlank(arguments[0]);
-  const right = productOrBlank(arguments[1]);
-  return left.product_name === right.product_name && left.status === right.status;
-}
-
-function stripMarks() {
-  const name = textOrBlank(arguments[0]);
-  return name.replace(punctMarks(), "").replace(/\s/g, "");
-}
-
-function matches() {
-  const productName = textOrBlank(arguments[0]);
-  const searchName = textOrBlank(arguments[1]);
-  return stripMarks(productName).toLowerCase().includes(stripMarks(searchName).toLowerCase());
 }
 
 function graphBodyError() {
@@ -459,6 +418,10 @@ function sendTextMessage() {
   });
 }
 
+function outputForProductsFile() {
+  refreshCatalogue(getRequest(), api);
+}
+
 function logPort() {
   console.log("running on port", app.get("port"));
 }
@@ -484,56 +447,10 @@ api.app = app;
 api.mountRoutes = mountRoutes;
 api.startListening = startListening;
 api.outputForProductsFile = outputForProductsFile;
-api.isNameDuplicate = isNameDuplicate;
 api.maybeListen = maybeListen;
-api.getRequest = getRequest;
-api.getCompanyJson = fetchLists;
-api.getProductJson = fetchProducts;
-api.resetCrawl = resetCrawl;
-api.hasMessageText = hasMessageText;
-api.weblinkMessage = weblinkMessage;
-api.cleanQuery = cleanQuery;
-api.stripFillers = stripFillers;
-api.applySpellingFixes = applySpellingFixes;
-api.loadedOk = loadedOk;
-api.stripMarks = stripMarks;
-api.matches = matches;
-api.formatProductLine = formatProductLine;
-api.sameProduct = sameProduct;
-api.nameAndStatusMatch = nameAndStatusMatch;
-api.onGraphResponse = onGraphResponse;
-api.generateResponseString = generateResponseString;
-api.filterResponseData = filterResponseData;
-api.mapCompanyProducts = mapCompanyProducts;
-api.replyIfText = replyIfText;
-api.sendSearchResult = sendSearchResult;
-api.loadedAsMain = Object.is(require.main, module);
-api.arg0 = arg0;
-api.textOrBlank = textOrBlank;
-api.productOrBlank = productOrBlank;
-api.eventOrBlank = eventOrBlank;
-api.copyReversed = copyReversed;
-api.emptyStrings = emptyStrings;
-api.emptyProducts = emptyProducts;
-api.emptyProductGroups = emptyProductGroups;
-api.isDuplicate = isDuplicate;
-api.productKey = productKey;
-api.webhookToken = webhookToken;
-api.pageToken = pageToken;
-api.listenPort = listenPort;
-api.urlencodedOptions = urlencodedOptions;
-api.blankProduct = blankProduct;
-api.blankEvent = blankEvent;
-api.catalogueUrls = catalogueUrls;
-api.weblinkBase = weblinkBase;
-api.punctMarks = punctMarks;
-api.asAny = asAny;
 api.startIfMain = startIfMain;
-api.loadedCatalogue = loadedCatalogue;
-api.cataloguePath = cataloguePath;
-api.secretsPath = secretsPath;
-api.loadCatalogue = loadCatalogue;
-api.loadSecrets = loadSecrets;
+api.getRequest = getRequest;
+api.loadedAsMain = Object.is(require.main, module);
 
 startIfMain(require.main, module, startListening);
 

@@ -69,24 +69,6 @@ function hasRoute(path: string, method: string) {
   });
 }
 
-function withEnv(name: string, value: string | undefined, run: () => void) {
-  const prev = process.env[name];
-  if (value === undefined) {
-    delete process.env[name];
-  } else {
-    process.env[name] = value;
-  }
-  try {
-    run();
-  } finally {
-    if (prev === undefined) {
-      delete process.env[name];
-    } else {
-      process.env[name] = prev;
-    }
-  }
-}
-
 beforeEach(function () {
   vac.mountRoutes();
   vac.request = requestMock;
@@ -477,25 +459,51 @@ describe("catalogue refresh", function () {
     expect(requestMock).toHaveBeenCalledTimes(4);
     expect(vac.loading).toBe(true);
   });
-});
 
-describe("helpers and listen", function () {
-  it("detects name duplicates without using country", function () {
-    const item = { product_name: "A", status: "S", country: "C" };
-    expect(vac.isNameDuplicate([], item)).toBe(false);
-    expect(vac.isNameDuplicate([{ product_name: "A", status: "S", country: "X" }], item)).toBe(true);
-    expect(vac.isNameDuplicate([{ product_name: "A", status: "T", country: "C" }], item)).toBe(false);
-    expect(vac.isNameDuplicate([{ product_name: "B", status: "S", country: "C" }], item)).toBe(false);
-    expect(vac.nameAndStatusMatch(item, { product_name: "B", status: "S", country: "C" })).toBe(false);
-    expect(vac.sameProduct(item, { product_name: "A", status: "T", country: "C" })).toBe(false);
-    expect(vac.sameProduct(item, { product_name: "B", status: "S", country: "C" })).toBe(false);
-    expect(vac.sameProduct(item, { product_name: "A", status: "S", country: "Z" })).toBe(false);
-    expect(vac.sameProduct(item, item)).toBe(true);
-    expect(vac.isDuplicate([], item)).toBe(false);
-    expect(vac.isDuplicate([item], item)).toBe(true);
-    expect(vac.productKey(item)).toBe("A\tS\tC");
+  it("finishes a crawl when company lists are empty", function () {
+    const log = vi.spyOn(console, "log").mockImplementation(function () {});
+    requestMock.mockImplementation(function (opts = { url: "" }) {
+      cbFrom(arguments)(null, { statusCode: 200, body: [] }, []);
+    });
+    vac.loading = true;
+    vac.outputForProductsFile();
+    expect(requestMock).toHaveBeenCalledTimes(3);
+    expect(vac.loading).toBe(false);
+    expect(log).toHaveBeenCalledWith("Product load complete.");
+    log.mockRestore();
   });
 
+  it("accepts company rows and product payloads with missing fields", function () {
+    const log = vi.spyOn(console, "log").mockImplementation(function () {});
+    requestMock.mockImplementation(function (opts = { url: "" }) {
+      var cb = cbFrom(arguments);
+      const url = opts.url || "";
+      if (url.indexOf("company/.json") > -1) {
+        cb(null, { statusCode: 200, body: {} }, {});
+        return;
+      }
+      if (url.indexOf("company") > -1) {
+        cb(null, { statusCode: 200, body: { company: {} } }, { company: {} });
+        return;
+      }
+      cb(null, { statusCode: 200, body: [{}, { company: { id: 8 } }] }, [{}, { company: { id: 8 } }]);
+    });
+    vac.outputForProductsFile();
+    expect(vac.loading).toBe(false);
+    expect(log).toHaveBeenCalledWith("Product load complete.");
+    log.mockRestore();
+  });
+
+  it("uses the request module when no test client is set", function () {
+    vac.request = null;
+    expect(typeof vac.getRequest()).toBe("function");
+    expect(vac.getRequest()).not.toBe(requestMock);
+    vac.request = requestMock;
+    expect(vac.getRequest()).toBe(requestMock);
+  });
+});
+
+describe("process and env seams", function () {
   it("starts the HTTP listener", function () {
     const log = vi.spyOn(console, "log").mockImplementation(function () {});
     const listen = vi.fn(function (_port = 0, cb = emptyCb) {
@@ -513,107 +521,74 @@ describe("helpers and listen", function () {
     vac.maybeListen(false);
     expect(listen).toHaveBeenCalledTimes(0);
     expect(vac.loadedAsMain).toBe(false);
-    vac.request = null;
-    expect(typeof vac.getRequest()).toBe("function");
-    vac.request = requestMock;
-    vac.resetCrawl();
-    vac.getCompanyJson([]);
-    expect(vac.loading).toBe(false);
     log.mockRestore();
   });
 
-  it("covers helper defaults and folding", function () {
-    expect(vac.hasMessageText()).toBe(false);
-    expect(vac.hasMessageText(null)).toBe(false);
-    expect(vac.arg0("x")).toBe("x");
-    expect(vac.textOrBlank()).toBe("");
-    expect(vac.textOrBlank(3)).toBe("");
-    expect(vac.stripFillers()).toBe("");
-    expect(vac.applySpellingFixes()).toBe("");
-    expect(vac.cleanQuery()).toBe("");
-    expect(vac.stripMarks("Widmer!")).toBe("Widmer");
-    expect(vac.matches("Widmer", "WID MER")).toBe(true);
-    expect(vac.matches("Widmer", "idmer")).toBe(true);
-    expect(vac.matches()).toBe(true);
-    expect(vac.formatProductLine()).toBe(" is . ");
-    expect(vac.formatProductLine({ product_name: "A", status: "S", country: "" })).toBe("A is S. ");
-    expect(vac.weblinkMessage()).toContain("www.vacfb.site/a?n=");
-    expect(vac.weblinkBase()).toBe("www.vacfb.site/a?n=");
-    expect(vac.generateResponseString([])).toEqual([
-      "Unfortunately I cannot find the name of the alcohol you specified in my database, apologies.",
-    ]);
-    expect(vac.filterResponseData([])).toEqual([]);
-    expect(vac.mapCompanyProducts([])).toEqual([]);
-    expect(vac.loadedOk(null, { statusCode: 200 })).toBe(true);
-    expect(vac.loadedOk(null, { statusCode: 404 })).toBe(false);
-    expect(vac.productOrBlank().product_name).toBe("");
-    expect(vac.eventOrBlank().message.text).toBe("");
-    const src = ["a", "b"];
-    expect(vac.copyReversed(src)).toEqual(["b", "a"]);
-    expect(src).toEqual(["a", "b"]);
-    expect(vac.emptyStrings()).toEqual([]);
-    expect(vac.emptyProducts()).toEqual([]);
-    expect(vac.emptyProductGroups()).toEqual([]);
-    vac.replyIfText();
+  it("returns 200 and sends nothing for a null messaging item", async function () {
+    const res = await supertest(app)
+      .post("/webhook/")
+      .send({ entry: [{ messaging: [null] }] });
+    expect(res.status).toBe(200);
     expect(graphCalls()).toHaveLength(0);
-    vac.sendSearchResult({ message: { text: "" }, sender: { id: "" } }, []);
-    vac.onGraphResponse(null, { body: {} });
-    expect(vac.asAny("z")).toBe("z");
-    expect(vac.loadedCatalogue().length).toBeGreaterThan(0);
-    expect(vac.getProductJson).toBeTypeOf("function");
-    expect(vac.cataloguePath()).toBe("./slimProducts");
-    expect(vac.secretsPath()).toBe("./secretConstants");
-    expect(typeof vac.loadCatalogue).toBe("function");
-    expect(typeof vac.loadSecrets).toBe("function");
-    vac.loadCatalogue();
-    vac.loadSecrets();
-    expect(vac.loadedCatalogue().length).toBeGreaterThan(0);
-    expect(vac.asAny(globalThis).WEBHOOK_TOKEN).toBe(process.env.WEBHOOK_TOKEN || "test-webhook-token");
-    expect(vac.asAny(globalThis).token).toBe(process.env.FB_PAGE_TOKEN || "test-page-token");
   });
 
-  it("exposes blank product and event defaults", function () {
-    const product = vac.blankProduct();
-    expect(product).toEqual({ product_name: "", status: "", country: "" });
-    expect(Object.keys(product)).toEqual(["product_name", "status", "country"]);
-    const event = vac.blankEvent();
-    expect(event.sender.id).toBe("");
-    expect(event.message.text).toBe("");
-    expect(Object.keys(event.sender)).toEqual(["id"]);
-    expect(Object.keys(event.message)).toEqual(["text"]);
-    expect(vac.eventOrBlank().sender.id).toBe("");
+  it("reads token and port fallbacks from the environment", async function () {
+    const prevHook = process.env.WEBHOOK_TOKEN;
+    const prevPage = process.env.FB_PAGE_TOKEN;
+    const prevPort = process.env.PORT;
+    try {
+      delete process.env.WEBHOOK_TOKEN;
+      const missing = await supertest(app).get("/webhook/").query({
+        "hub.verify_token": "test-webhook-token",
+        "hub.challenge": "from-fallback",
+      });
+      expect(missing.text).toBe("from-fallback");
+      process.env.WEBHOOK_TOKEN = "custom-hook";
+      const customHook = await supertest(app).get("/webhook/").query({
+        "hub.verify_token": "custom-hook",
+        "hub.challenge": "xyz",
+      });
+      expect(customHook.text).toBe("xyz");
+      delete process.env.FB_PAGE_TOKEN;
+      await postText("Widmer");
+      expect(graphCalls()[0].qs.access_token).toBe("test-page-token");
+      requestMock.mockClear();
+      process.env.FB_PAGE_TOKEN = "custom-page";
+      await postText("Widmer");
+      expect(graphCalls()[0].qs.access_token).toBe("custom-page");
+      delete process.env.PORT;
+      vac.mountRoutes();
+      expect(app.get("port")).toBe(80);
+      process.env.PORT = "3000";
+      vac.mountRoutes();
+      expect(app.get("port")).toBe("3000");
+    } finally {
+      if (prevHook === undefined) {
+        delete process.env.WEBHOOK_TOKEN;
+      } else {
+        process.env.WEBHOOK_TOKEN = prevHook;
+      }
+      if (prevPage === undefined) {
+        delete process.env.FB_PAGE_TOKEN;
+      } else {
+        process.env.FB_PAGE_TOKEN = prevPage;
+      }
+      if (prevPort === undefined) {
+        delete process.env.PORT;
+      } else {
+        process.env.PORT = prevPort;
+      }
+      vac.mountRoutes();
+    }
   });
 
-  it("reads token and port fallbacks from the environment", function () {
-    withEnv("WEBHOOK_TOKEN", undefined, function () {
-      expect(vac.webhookToken()).toBe("test-webhook-token");
-    });
-    withEnv("WEBHOOK_TOKEN", "custom-hook", function () {
-      expect(vac.webhookToken()).toBe("custom-hook");
-    });
-    withEnv("FB_PAGE_TOKEN", undefined, function () {
-      expect(vac.pageToken()).toBe("test-page-token");
-    });
-    withEnv("FB_PAGE_TOKEN", "custom-page", function () {
-      expect(vac.pageToken()).toBe("custom-page");
-    });
-    withEnv("PORT", undefined, function () {
-      expect(vac.listenPort()).toBe(80);
-    });
-    withEnv("PORT", "3000", function () {
-      expect(vac.listenPort()).toBe("3000");
-    });
-  });
-
-  it("keeps urlencoded parsing unextended and catalogue urls in order", function () {
-    expect(vac.urlencodedOptions()).toEqual({ extended: false });
-    expect(vac.urlencodedOptions().extended).toBe(false);
-    expect(vac.catalogueUrls()).toEqual([
-      "http://www.barnivore.com/beer.json",
-      "http://barnivore.com/wine.json",
-      "http://barnivore.com/liquor.json",
-    ]);
-    expect(String(vac.punctMarks())).toBe(String(/[.,/#!$%^&*;:{}=\-_'~()]/g));
+  it("rejects nested urlencoded webhook bodies", async function () {
+    const res = await supertest(app)
+      .post("/webhook/")
+      .type("form")
+      .send("entry[0][messaging][0][sender][id]=111&entry[0][messaging][0][message][text]=Widmer");
+    expect(res.status).toBe(500);
+    expect(res.text).toContain("TypeError");
   });
 
   it("mounts routes once and starts only when loaded as main", async function () {
