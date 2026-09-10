@@ -3,7 +3,7 @@ base = "origin/master"
 
 [ts]
 root = "."
-source = "index.ts"
+source = "index.js"
 sources = ["."]
 crap_max = 4
 runner = "vitest"
