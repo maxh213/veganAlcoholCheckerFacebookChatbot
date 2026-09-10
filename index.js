@@ -1,8 +1,10 @@
-import express from "express";
-import bodyParser from "body-parser";
-import request from "request";
-import { WEBHOOK_TOKEN, FB_PAGE_TOKEN } from "./secretConstants";
-import { loadedProducts } from "./slimProducts";
+const express = require("express");
+const bodyParser = require("body-parser");
+const request = require("request");
+
+const { WEBHOOK_TOKEN, FB_PAGE_TOKEN } = require("./secretConstants.cjs");
+const { loadedProducts } = require("./slimProducts.cjs");
+
 const URL = "www.vacfb.site/a?n=";
 
 const app = express();
@@ -18,22 +20,22 @@ app.get("/", (_req, res) => {
 
 app.get("/webhook/", (req, res) => {
   if (req.query.hub_verify_token === WEBHOOK_TOKEN) {
-    res.send(req.query.hub_challenge as string);
+    res.send(req.query.hub_challenge);
   }
   res.send("Error, wrong token");
 });
 
-function normalizeProductText(text: string): string {
+function normalizeProductText(text) {
   return text.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_'~()]/g, "").replace(/\s/g, "");
 }
 
-function matches(productName: string, searchName: string): boolean {
+function matches(productName, searchName) {
   const normalizedProduct = normalizeProductText(productName);
   const normalizedSearch = normalizeProductText(searchName);
   return normalizedProduct.indexOf(normalizedSearch) > -1;
 }
 
-function normalizeSearch(text: string): string {
+function normalizeSearch(text) {
   return text
     .replace("hey, is ", "")
     .replace("Hey, is ", "")
@@ -53,13 +55,13 @@ function normalizeSearch(text: string): string {
     .replace("absolute vodka", "absolut vodka");
 }
 
-function productKey(product: { product_name: string; status: string; country: string | undefined }): string {
+function productKey(product) {
   return `${product.product_name}|${product.status}|${product.country}`;
 }
 
-function filterResponseData(responseData: { product_name: string; status: string; country: string | undefined }[]): { product_name: string; status: string; country: string | undefined }[] {
-  const cleanResponseData: string[] = [];
-  const result: { product_name: string; status: string; country: string | undefined }[] = [];
+function filterResponseData(responseData) {
+  const cleanResponseData = [];
+  const result = [];
   for (let i = 0; i < responseData.length; i++) {
     const key = productKey(responseData[i]);
     if (!cleanResponseData.includes(key)) {
@@ -70,15 +72,15 @@ function filterResponseData(responseData: { product_name: string; status: string
   return result;
 }
 
-function formatProductResponse(product: { product_name: string; status: string; country: string | undefined }): string {
+function formatProductResponse(product) {
   if (!product.country || product.country === "") {
     return `${product.product_name} is ${product.status}. `;
   }
   return `${product.product_name} made in ${product.country} is ${product.status}. `;
 }
 
-function generateResponseString(responseData: { product_name: string; status: string; country: string | undefined }[]): string[] {
-  const response: string[] = [];
+function generateResponseString(responseData) {
+  const response = [];
   for (let i = 0; i < responseData.length; i++) {
     response.push(formatProductResponse(responseData[i]));
   }
@@ -88,8 +90,8 @@ function generateResponseString(responseData: { product_name: string; status: st
   return response;
 }
 
-function searchForMatchingProducts(text: string): string[] {
-  const responseData: { product_name: string; status: string; country: string | undefined }[] = [];
+function searchForMatchingProducts(text) {
+  const responseData = [];
   for (let i = 0; i < loadedProducts.length; i++) {
     for (let j = 0; j < loadedProducts[i].length; j++) {
       if (matches(loadedProducts[i][j].product_name, text)) {
@@ -101,7 +103,7 @@ function searchForMatchingProducts(text: string): string[] {
   return generateResponseString(filtered);
 }
 
-function sendTextMessage(sender: string, text: string): void {
+function sendTextMessage(sender, text) {
   const messageData = { text };
   request(
     {
@@ -117,18 +119,18 @@ function sendTextMessage(sender: string, text: string): void {
   );
 }
 
-function sendWeblinkResponse(sender: string, originalText: string): void {
+function sendWeblinkResponse(sender, originalText) {
   const messageResponse = `I know a lot of drinks with that name so I made a weblink for you ${URL}${originalText}`;
   sendTextMessage(sender, messageResponse);
 }
 
-function sendMultipleResponses(sender: string, responses: string[]): void {
+function sendMultipleResponses(sender, responses) {
   for (let i = 0; i < responses.length; i++) {
     sendTextMessage(sender, responses[i]);
   }
 }
 
-function handleWebhookMessage(event: any, sender: string): void {
+function handleWebhookMessage(event, sender) {
   const text = normalizeSearch(event.message.text);
   const response = searchForMatchingProducts(text);
   if (response.length > 20) {
@@ -138,17 +140,17 @@ function handleWebhookMessage(event: any, sender: string): void {
   }
 }
 
-function extractSender(event: any): string | undefined {
+function extractSender(event) {
   if (!event?.sender) return undefined;
   return event.sender.id;
 }
 
-function extractMessageText(event: any): string | undefined {
+function extractMessageText(event) {
   if (!event?.message) return undefined;
   return event.message.text;
 }
 
-function processEvent(event: any): void {
+function processEvent(event) {
   const sender = extractSender(event);
   if (!sender) return;
   const text = extractMessageText(event);
@@ -156,7 +158,7 @@ function processEvent(event: any): void {
   handleWebhookMessage(event, sender);
 }
 
-function extractEvents(body: any): any[] {
+function extractEvents(body) {
   const entry = body.entry;
   if (!entry) return [];
   const first = entry[0];
@@ -170,4 +172,4 @@ app.post("/webhook/", (req, res) => {
   res.sendStatus(200);
 });
 
-export default app;
+module.exports = app;

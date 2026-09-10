@@ -1,4 +1,4 @@
-export const loadedProducts = [ [ { product_name: 'Ørbæk Black',
+module.exports.loadedProducts = [ [ { product_name: 'Ørbæk Black',
       status: 'Vegan Friendly',
       country: 'Denmark' },
     { product_name: 'Ørbæk Blonde Abbey Ale',

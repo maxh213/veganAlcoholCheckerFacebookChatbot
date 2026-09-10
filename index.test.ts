@@ -1,14 +1,16 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
-import * as http from "http";
 import supertest from "supertest";
 
-const __dirname = import.meta.dirname;
-const index = await import(__dirname + "/index.ts");
-const app = index.default;
+vi.mock("request", () => ({
+  default: vi.fn((_options, callback) => callback(null, {}, {})),
+}));
 
-let server: http.Server;
+let app;
+let server;
 
 beforeAll(async () => {
+  const mod = await import("./index.js");
+  app = mod.default;
   server = app.listen(0);
 });
 
@@ -327,6 +329,5 @@ describe("index", () => {
       });
       expect(res.status).toBe(200);
     });
-
   });
 });
