@@ -1,4 +1,5 @@
-loadedProducts = [ [ { product_name: 'Ørbæk Black',
+module.exports = {};
+var loadedProducts = [ [ { product_name: 'Ørbæk Black',
       status: 'Vegan Friendly',
       country: 'Denmark' },
     { product_name: 'Ørbæk Blonde Abbey Ale',

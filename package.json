@@ -2,10 +2,10 @@
   "name": "secretbots",
   "version": "1.0.0",
   "description": "",
-  "main": "index.ts",
+  "main": "index.js",
   "scripts": {
     "test": "vitest run",
-    "start": "tsx index.ts"
+    "start": "node index.js"
   },
   "author": "",
   "license": "ISC",

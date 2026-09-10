@@ -1,12 +1,9 @@
-import express from 'express';
-import bodyParser from 'body-parser';
-import request from 'request';
-
-type Request = express.Request;
-type Response = express.Response;
-
-require("./slimProducts");
-require("./secretConstants");
+import type { Application, Request, Response } from 'express';
+const express = require('express');
+const bodyParser = require('body-parser');
+const request = require('request');
+import { WEBHOOK_TOKEN, token } from './secretConstants.js';
+require('./slimProducts.js'); import './tsx-cjs.d.ts'; require('./tsx-cjs.d.ts');
 
 declare global {
   var loadedProducts: any[][];
@@ -21,7 +18,7 @@ const URL = 'www.vacfb.site/a?n=';
 let companyURLs: string[] = [];
 let products: any[][] = [];
 
-export function createApp(): express.Application {
+export function createApp(): Application {
   const app = express();
   app.set('port', (process.env.PORT || 80));
   app.use(bodyParser.urlencoded({ extended: false }));

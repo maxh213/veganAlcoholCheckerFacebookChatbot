@@ -9,7 +9,8 @@
     "moduleResolution": "node",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["node"]
+    "types": ["node"],
+    "allowImportingTsExtensions": true
   },
   "include": ["index.js", "**/*.ts", "**/*.test.js"],
   "exclude": ["node_modules", "slimProducts.js"]
