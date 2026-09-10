@@ -6,7 +6,7 @@ export default defineConfig({
     include: ["**/*.test.js", "**/*.test.ts", "qa/**/*.test.js", "qa/**/*.test.ts"],
     coverage: {
       provider: "v8",
-      include: ["index.js"],
+      include: ["index.ts"],
       exclude: ["node_modules/**", "slimProducts.js", "**/*.test.*", "qa/**"],
     },
   },

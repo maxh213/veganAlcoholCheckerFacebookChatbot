@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import request from "supertest";
 import { app, getTextFromEvent, handleWebhookMessage, normalizeProductText, normalizeSearch, matches, productKey, filterResponseData, formatProductResponse, generateResponseArray, searchForMatchingProducts, sendWeblinkResponse } from "./index.js";
 
@@ -204,7 +204,7 @@ describe("getTextFromEvent", () => {
   });
 
   it("returns empty string when message.text is null", () => {
-    expect(getTextFromEvent({ message: { text: null } })).toBe("");
+    expect(getTextFromEvent({ message: { text: null as any } })).toBe("");
   });
 });
 
