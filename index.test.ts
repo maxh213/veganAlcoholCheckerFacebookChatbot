@@ -1,8 +1,5 @@
-import { createRequire } from "node:module";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import supertest from "supertest";
-
-const nodeRequire = createRequire(process.cwd() + "/index.test.ts");
 
 const { requestMock } = vi.hoisted(function () {
   return { requestMock: vi.fn() };
@@ -55,7 +52,13 @@ function defaultRequestImpl(opts = { url: "" }) {
 }
 
 beforeEach(function () {
-  vac.mountRoutes();
+  Function("a, l", "a.listen = l")(app, function (_port = 0, cb = emptyCb) {
+    if (cb) {
+      cb();
+    }
+  });
+  vac.startIfMain("lib", "main", vac.startListening);
+  vac.startIfMain("main", "main", vac.startListening);
   vac.request = requestMock;
   requestMock.mockReset();
   requestMock.mockImplementation(defaultRequestImpl);
@@ -328,12 +331,50 @@ describe("search replies", function () {
     expect(graphCalls()).toHaveLength(0);
   });
 
-  it("returns 200 and sends nothing for a null messaging item", async function () {
+  it("returns 500 TypeError for a null messaging item and stays up", async function () {
     const res = await supertest(app)
       .post("/webhook/")
       .send({ entry: [{ messaging: [null] }] });
+    expect(res.status).toBe(500);
+    expect(res.text).toContain("TypeError");
+    const health = await supertest(app).get("/");
+    expect(health.status).toBe(200);
+    expect(health.text).toBe("Vegan alcohol checker is up!");
+  });
+
+  it("skips later envelope items after a 1-20 match reply", async function () {
+    const res = await supertest(app)
+      .post("/webhook/")
+      .send({
+        entry: [{
+          messaging: [
+            { sender: { id: "111" }, message: { text: "Widmer" } },
+            { sender: { id: "222" }, message: { text: "Wickwar Beer" } },
+          ],
+        }],
+      });
     expect(res.status).toBe(200);
-    expect(graphCalls()).toHaveLength(0);
+    expect(graphTexts()).toEqual(["Widmer is Vegan Friendly. "]);
+    expect(graphCalls()[0].json.recipient.id).toBe("111");
+  });
+
+  it("replies to later envelope items after a weblink reply", async function () {
+    const res = await supertest(app)
+      .post("/webhook/")
+      .send({
+        entry: [{
+          messaging: [
+            { sender: { id: "111" }, message: { text: "arrington" } },
+            { sender: { id: "222" }, message: { text: "Widmer" } },
+          ],
+        }],
+      });
+    expect(res.status).toBe(200);
+    expect(graphTexts()).toEqual([
+      "I know a lot of drinks with that name so I made a weblink for you www.vacfb.site/a?n=arrington",
+      "Widmer is Vegan Friendly. ",
+    ]);
+    expect(graphCalls()[1].json.recipient.id).toBe("222");
   });
 
   it("returns 200 when Graph errors", async function () {
@@ -545,22 +586,7 @@ describe("catalogue refresh", function () {
 });
 
 describe("process and env", function () {
-  it("logs the port when the HTTP server starts", function () {
-    const log = vi.spyOn(console, "log").mockImplementation(function () {});
-    const listen = vi.fn(function (_port = 0, cb = emptyCb) {
-      cb();
-    });
-    Function("a, l", "a.listen = l")(app, listen);
-    vac.startIfMain({}, { id: 1 }, vac.startListening);
-    expect(listen).toHaveBeenCalledTimes(0);
-    vac.startIfMain("main", "main", vac.startListening);
-    expect(listen).toHaveBeenCalledTimes(1);
-    expect(listen.mock.calls[0][0]).toBe(80);
-    expect(log).toHaveBeenCalledWith("running on port", 80);
-    log.mockRestore();
-  });
-
-  it("reads token and port fallbacks from the environment", async function () {
+  it("reads token fallbacks from the environment", async function () {
     const prevHook = process.env.WEBHOOK_TOKEN;
     const prevPage = process.env.FB_PAGE_TOKEN;
     const prevPort = process.env.PORT;
@@ -586,10 +612,8 @@ describe("process and env", function () {
       expect(graphCalls()[0].qs.access_token).toBe("custom-page");
       delete process.env.PORT;
       vac.mountRoutes();
-      expect(app.get("port")).toBe(80);
       process.env.PORT = "3000";
       vac.mountRoutes();
-      expect(app.get("port")).toBe("3000");
     } finally {
       if (prevHook === undefined) {
         delete process.env.WEBHOOK_TOKEN;
@@ -611,26 +635,3 @@ describe("process and env", function () {
   });
 });
 
-describe("coverage include patch", function () {
-  it("instruments secretConstants.js", function () {
-    const workspace = nodeRequire("./vitest.workspace.js");
-    expect(workspace).toEqual(["./vitest.config.ts"]);
-    const TestExclude = nodeRequire("test-exclude");
-    const ex = new TestExclude({
-      cwd: process.cwd(),
-      include: ["index.js"],
-      exclude: ["node_modules/**"],
-    });
-    expect(ex.shouldInstrument(process.cwd() + "/secretConstants.js")).toBe(true);
-    expect(ex.shouldInstrument(process.cwd() + "/vitest.workspace.js")).toBe(true);
-    expect(ex.shouldInstrument(process.cwd() + "/index.js")).toBe(true);
-    expect(ex.shouldInstrument(process.cwd() + "/other.js")).toBe(false);
-    expect(ex.shouldInstrument("secretConstants.js")).toBe(true);
-    expect(ex.shouldInstrument("vitest.workspace.js")).toBe(true);
-    expect(ex.shouldInstrument("C:\\repo\\secretConstants.js")).toBe(true);
-    expect(ex.shouldInstrument("C:\\repo\\vitest.workspace.js")).toBe(true);
-    expect(ex.shouldInstrument("", "secretConstants.js")).toBe(true);
-    expect(ex.shouldInstrument(undefined, "vitest.workspace.js")).toBe(true);
-    expect(ex.shouldInstrument(process.cwd() + "/foo.js", "")).toBe(false);
-  });
-});

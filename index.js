@@ -4,6 +4,7 @@ const request = require("request");
 
 const app = express();
 const api = Object.create(null);
+var i = 0;
 
 function cataloguePath() {
   return "./slimProducts";
@@ -29,13 +30,13 @@ function pageToken() {
   return secrets().readPageToken();
 }
 
-function asAny() {
-  return arguments[0];
+function catalogueGlobal() {
+  return "loadedProducts";
 }
 
 function loadedCatalogue() {
   loadCatalogue();
-  return asAny(globalThis).loadedProducts;
+  return Object(globalThis)[catalogueGlobal()];
 }
 
 function httpUrl() {
@@ -100,7 +101,10 @@ function verifyWebhook() {
 }
 
 function receiveWebhook() {
-  arguments[0].body.entry[0].messaging.forEach(replyIfText);
+  const messaging = arguments[0].body.entry[0].messaging;
+  for (i = 0; i < messaging.length; i++) {
+    replyToEvent(messaging[i]);
+  }
   arguments[1].sendStatus(200);
 }
 
@@ -306,40 +310,36 @@ function repliesFor() {
   return generateResponseString(found);
 }
 
-function hasMessageText() {
-  const event = arguments[0];
-  return Boolean(event?.message?.text);
-}
-
 function weblinkMessage() {
   return "I know a lot of drinks with that name so I made a weblink for you " + weblinkBase() + arguments[0];
 }
 
 function sendEachMatch() {
-  const event = arguments[0];
-  arguments[1].forEach(function () {
-    sendTextMessage(event.sender.id, arguments[0]);
-  });
+  const sender = arguments[0];
+  const lines = arguments[1];
+  for (i = 0; i < lines.length; i++) {
+    sendTextMessage(sender, lines[i]);
+  }
 }
 
 function sendSearchResult() {
-  const event = arguments[0];
-  const response = arguments[1];
-  if (response.length > 20) {
-    sendTextMessage(event.sender.id, weblinkMessage(event.message.text));
-    return;
-  }
-  sendEachMatch(event, response);
-}
-
-function replyIfText() {
-  const event = arguments[0];
-  if (!hasMessageText(event)) {
-    return;
-  }
+  const sender = arguments[0];
+  const event = arguments[1];
   const response = repliesFor(event.message.text, loadedCatalogue());
   console.log(response.length);
-  sendSearchResult(event, response);
+  if (response.length > 20) {
+    sendTextMessage(sender, weblinkMessage(event.message.text));
+    return;
+  }
+  sendEachMatch(sender, response);
+}
+
+function replyToEvent() {
+  const event = arguments[0];
+  const sender = event.sender.id;
+  if (event.message && event.message.text) {
+    sendSearchResult(sender, event);
+  }
 }
 
 function onGraphResponse() {
