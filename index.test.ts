@@ -1,16 +1,19 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import supertest from "supertest";
+import express from "express";
 
 vi.mock("request", () => ({
-  default: vi.fn((_options, callback) => callback(null, {}, {})),
+  default: vi.fn((_options: unknown, callback: (error: unknown, response: unknown, body: unknown) => void) => callback(null, {}, {})),
 }));
 
-let app;
-let server;
+let app: any;
+let server: any;
+let getTextFromEvent: (event: any) => string;
 
 beforeAll(async () => {
   const mod = await import("./index.js");
   app = mod.default;
+  getTextFromEvent = mod.getTextFromEvent;
   server = app.listen(0);
 });
 
@@ -67,6 +70,18 @@ describe("index", () => {
   });
 
   describe("Text normalization", () => {
+    it("getTextFromEvent returns empty string for event without message", () => {
+      expect(getTextFromEvent({})).toBe("");
+    });
+
+    it("getTextFromEvent returns empty string for message without text", () => {
+      expect(getTextFromEvent({ message: {} })).toBe("");
+    });
+
+    it("getTextFromEvent returns text when present", () => {
+      expect(getTextFromEvent({ message: { text: "hello" } })).toBe("hello");
+    });
+
     it("strips 'hey, is ' prefix", async () => {
       const agent = supertest(app);
       const res = await agent.post("/webhook/").send({
