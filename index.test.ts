@@ -1,6 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import request from "supertest";
-import { app, getTextFromEvent, handleWebhookMessage, normalizeProductText, normalizeSearch, matches, productKey, filterResponseData, formatProductResponse, generateResponseArray, searchForMatchingProducts, sendWeblinkResponse, sendMultipleResponses } from "./index";
+import { app, getTextFromEvent, handleWebhookMessage, normalizeProductText, normalizeSearch, matches, productKey, filterResponseData, formatProductResponse, generateResponseArray, searchForMatchingProducts, sendWeblinkResponse, sendMultipleResponses, sendTextMessage } from "./index";
+
+vi.mock("request");
 
 describe("GET /", () => {
   it("Health check endpoint responds", async () => {
@@ -107,31 +109,31 @@ describe("normalizeProductText", () => {
 });
 
 describe("normalizeSearch", () => {
-  it("Incoming text with \"hey, is \" prefix returns Guinness result", () => {
+  it("strips 'hey, is ' prefix", () => {
     expect(normalizeSearch("hey, is guinness")).toBe("guinness");
   });
 
-  it("Incoming text with \"is \" prefix returns Guinness result", () => {
+  it("strips 'is ' prefix", () => {
     expect(normalizeSearch("is guinness")).toBe("guinness");
   });
 
-  it("Incoming text with \"are \" prefix returns Guinness result", () => {
+  it("strips 'are ' prefix", () => {
     expect(normalizeSearch("are guinness")).toBe("guinness");
   });
 
-  it("Incoming text with \"what about \" prefix returns Guinness result", () => {
+  it("strips 'what about ' prefix", () => {
     expect(normalizeSearch("what about guinness")).toBe("guinness");
   });
 
-  it("Incoming text with \"vegan?\" suffix returns Guinness result", () => {
+  it("strips 'vegan?' suffix", () => {
     expect(normalizeSearch("guinnessvegan?")).toBe("guinness");
   });
 
-  it("Typo \"guiness\" is corrected to guinness", () => {
+  it("corrects 'guiness' to 'guinness'", () => {
     expect(normalizeSearch("guiness")).toBe("guinness");
   });
 
-  it("Typo \"absolute vodka\" is corrected to absolut vodka", () => {
+  it("corrects 'absolute vodka' to 'absolut vodka'", () => {
     expect(normalizeSearch("absolute vodka")).toBe("absolut vodka");
   });
 });
