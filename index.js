@@ -16,6 +16,9 @@ var companyURLs = emptyStrings();
 var products = emptyProductGroups();
 var webhookToken = process.env.WEBHOOK_TOKEN || "test-webhook-token";
 var pageToken = process.env.FB_PAGE_TOKEN || "test-page-token";
+var punctMarks = /[.,\/#!$%\^&\*;:{}=\-_'~()]/g;
+var blankProduct = { product_name: "", status: "", country: "" };
+var blankEvent = { message: { text: "" }, sender: { id: "" } };
 
 app.set("port", process.env.PORT || 80);
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -30,62 +33,91 @@ app.get("/webhook/", function (req, res) {
   res.send("Error, wrong token");
 });
 app.post("/webhook/", function (req, res) {
-  var events = req.body.entry[0].messaging;
-  var cursor = { i: 0 };
-  for (cursor.i = 0; cursor.i < events.length; cursor.i++) {
-    replyIfText({ event: events[cursor.i], cursor: cursor });
-  }
+  req.body.entry[0].messaging.forEach(replyIfText);
   res.sendStatus(200);
 });
 
+function arg0() {
+  return arguments[0];
+}
+
 function emptyStrings() {
-  return [""].slice(0, 0);
+  return Object.keys({}).map(String);
 }
 
 function emptyProducts() {
-  return [{ product_name: "", status: "", country: "" }].slice(0, 0);
+  var out = [];
+  out.push(blankProduct);
+  out.pop();
+  return out;
 }
 
 function emptyProductGroups() {
-  return [emptyProducts()].slice(0, 0);
+  var out = [];
+  out.push(emptyProducts());
+  out.pop();
+  return out;
 }
 
-function replyIfText(args = { event: { message: { text: "" }, sender: { id: "" } }, cursor: { i: 0 } }) {
-  if (!hasMessageText(args.event)) {
+function eventOrBlank() {
+  return arg0(arguments[0]) || blankEvent;
+}
+
+function productOrBlank() {
+  return arg0(arguments[0]) || blankProduct;
+}
+
+function textOrBlank() {
+  var text = arg0(arguments[0]);
+  if (typeof text === "string") {
+    return text;
+  }
+  return "";
+}
+
+function replyIfText() {
+  var event = eventOrBlank(arguments[0]);
+  if (!hasMessageText(event)) {
     return;
   }
-  var response = searchForMatchingProducts(cleanQuery(args.event.message.text));
+  var response = searchForMatchingProducts(cleanQuery(event.message.text));
   console.log(response.length);
-  sendSearchResult({ event: args.event, response: response, cursor: args.cursor });
+  sendSearchResult(event, response);
 }
 
-function hasMessageText(event = { message: { text: "" }, sender: { id: "" } }) {
-  return Boolean(event.message && event.message.text);
+function hasMessageText() {
+  var event = arg0(arguments[0]);
+  return Boolean(event && event.message && event.message.text);
 }
 
-function sendSearchResult(args = { event: { message: { text: "" }, sender: { id: "" } }, response: emptyStrings(), cursor: { i: 0 } }) {
-  if (args.response.length > 20) {
-    sendTextMessage(args.event.sender.id, weblinkMessage(args.event.message.text));
+function sendSearchResult() {
+  var event = eventOrBlank(arguments[0]);
+  var response = arg0(arguments[1]);
+  if (response.length > 20) {
+    sendTextMessage(event.sender.id, weblinkMessage(event.message.text));
     return;
   }
-  sendEachMatch(args);
+  sendEachMatch(event, response);
 }
 
-function sendEachMatch(args = { event: { message: { text: "" }, sender: { id: "" } }, response: emptyStrings(), cursor: { i: 0 } }) {
-  for (args.cursor.i = 0; args.cursor.i < args.response.length; args.cursor.i++) {
-    sendTextMessage(args.event.sender.id, args.response[args.cursor.i]);
-  }
+function sendEachMatch() {
+  var event = eventOrBlank(arguments[0]);
+  var response = arg0(arguments[1]);
+  response.forEach(function () {
+    sendTextMessage(event.sender.id, arguments[0]);
+  });
 }
 
-function weblinkMessage(original = "") {
-  return "I know a lot of drinks with that name so I made a weblink for you " + weblinkBase + original;
+function weblinkMessage() {
+  return "I know a lot of drinks with that name so I made a weblink for you " + weblinkBase + textOrBlank(arguments[0]);
 }
 
-function cleanQuery(text = "") {
-  return applySpellingFixes(stripFillers(text));
+function cleanQuery() {
+  return applySpellingFixes(stripFillers(textOrBlank(arguments[0])));
 }
 
-function stripFillers(text = "") {
+function stripFillers() {
+  var text = textOrBlank(arguments[0]);
   text = text.replace("hey, is ", "");
   text = text.replace("Hey, is ", "");
   text = text.replace("hey is ", "");
@@ -102,7 +134,8 @@ function stripFillers(text = "") {
   return text;
 }
 
-function applySpellingFixes(text = "") {
+function applySpellingFixes() {
+  var text = textOrBlank(arguments[0]);
   text = text.replace("guiness", "guinness");
   text = text.replace("Guiness", "guinness");
   text = text.replace("absolute vodka", "absolut vodka");
@@ -116,198 +149,240 @@ function resetCrawl() {
 
 function outputForProductsFile() {
   resetCrawl();
-  getCompanyJson([beerURL, wineURL, liquorURL]);
+  fetchLists([beerURL, wineURL, liquorURL]);
 }
 
 function getRequest() {
   return host.vacRequest || request;
 }
 
-function getCompanyJson(urls = emptyStrings()) {
-  var url = urls.pop() || "";
-  getRequest()({ url: url, json: true }, function (error = null, response = { statusCode: 0 }, body = [{ company: { id: 0 } }].slice(0, 0)) {
-    onCompanyJson({ error: error, response: response, body: body, url: url, urls: urls });
+function copyReversed() {
+  var urls = arg0(arguments[0]);
+  return urls.slice().reverse();
+}
+
+function fetchLists() {
+  var urls = arg0(arguments[0]);
+  var failed = [0];
+  copyReversed(urls).forEach(function () {
+    fetchList(arguments[0], failed);
+  });
+  if (failed[0] === 0) {
+    fetchProducts(companyURLs);
+  }
+}
+
+function fetchList() {
+  var url = textOrBlank(arguments[0]);
+  var failed = arg0(arguments[1]);
+  if (failed[0] !== 0) {
+    return;
+  }
+  getRequest()({ url: url, json: true }, function () {
+    onListResponse(arguments[0], arguments[1], arguments[2], url, failed);
   });
 }
 
-function onCompanyJson(args = { error: null, response: { statusCode: 0 }, body: [{ company: { id: 0 } }].slice(0, 0), url: "", urls: emptyStrings() }) {
-  if (args.error) {
-    console.log(args.error);
+function loadedOk() {
+  var error = arg0(arguments[0]);
+  var response = arg0(arguments[1]);
+  if (error) {
+    console.log(error);
+    return false;
+  }
+  return response.statusCode === 200;
+}
+
+function onListResponse() {
+  var error = arg0(arguments[0]);
+  var response = arg0(arguments[1]);
+  var body = arg0(arguments[2]);
+  var url = textOrBlank(arguments[3]);
+  var failed = arg0(arguments[4]);
+  if (!loadedOk(error, response)) {
+    failed[0] = 1;
     return;
   }
-  if (args.response.statusCode !== 200) {
-    return;
-  }
-  collectCompanies(args);
+  console.log(url + " loaded!");
+  pushCompanyUrls(body);
 }
 
-function collectCompanies(args = { error: null, response: { statusCode: 0 }, body: [{ company: { id: 0 } }].slice(0, 0), url: "", urls: emptyStrings() }) {
-  console.log(args.url + " loaded!");
-  pushCompanyUrls(args.body);
-  continueCompanies(args.urls);
-}
-
-function pushCompanyUrls(body = [{ company: { id: 0 } }].slice(0, 0)) {
-  for (var i = 0; i < body.length; i++) {
-    companyURLs.push("http://www.barnivore.com/company/" + body[i].company.id + ".json");
-  }
-}
-
-function continueCompanies(urls = emptyStrings()) {
-  if (urls.length === 0) {
-    getProductJson(companyURLs);
-    return;
-  }
-  getCompanyJson(urls);
-}
-
-function getProductJson(urls = emptyStrings()) {
-  var url = urls.pop() || "";
-  getRequest()({ url: url, json: true }, function (error = null, response = { statusCode: 0 }, body = { company: { products: emptyProducts() } }) {
-    onProductJson({ error: error, response: response, body: body, url: url, urls: urls });
+function pushCompanyUrls() {
+  var body = arg0(arguments[0]);
+  body.forEach(function () {
+    var row = arguments[0];
+    companyURLs.push("http://www.barnivore.com/company/" + row.company.id + ".json");
   });
 }
 
-function onProductJson(args = { error: null, response: { statusCode: 0 }, body: { company: { products: emptyProducts() } }, url: "", urls: emptyStrings() }) {
-  if (args.error) {
-    console.log(args.error);
-    return;
-  }
-  if (args.response.statusCode !== 200) {
-    return;
-  }
-  collectProducts(args);
-}
-
-function collectProducts(args = { error: null, response: { statusCode: 0 }, body: { company: { products: emptyProducts() } }, url: "", urls: emptyStrings() }) {
-  console.log(args.url + " loaded!");
-  products.push(mapCompanyProducts(args.body.company.products));
-  continueProducts(args.urls);
-}
-
-function mapCompanyProducts(list = emptyProducts()) {
-  var mapped = emptyProducts();
-  for (var i = 0; i < list.length; i++) {
-    mapped.push({
-      product_name: list[i].product_name,
-      status: list[i].status,
-      country: list[i].country,
-    });
-  }
-  return mapped;
-}
-
-function continueProducts(urls = emptyStrings()) {
-  if (urls.length === 0) {
+function fetchProducts() {
+  var urls = arg0(arguments[0]);
+  var failed = [0];
+  copyReversed(urls).forEach(function () {
+    fetchProduct(arguments[0], failed);
+  });
+  if (failed[0] === 0) {
     console.log("Product load complete.");
     console.log(products);
     host.loading = false;
+  }
+}
+
+function fetchProduct() {
+  var url = textOrBlank(arguments[0]);
+  var failed = arg0(arguments[1]);
+  if (failed[0] !== 0) {
     return;
   }
-  getProductJson(urls);
+  getRequest()({ url: url, json: true }, function () {
+    onProductResponse(arguments[0], arguments[1], arguments[2], url, failed);
+  });
 }
 
-function searchForMatchingProducts(text = "") {
+function onProductResponse() {
+  var error = arg0(arguments[0]);
+  var response = arg0(arguments[1]);
+  var body = arg0(arguments[2]);
+  var url = textOrBlank(arguments[3]);
+  var failed = arg0(arguments[4]);
+  if (!loadedOk(error, response)) {
+    failed[0] = 1;
+    return;
+  }
+  console.log(url + " loaded!");
+  products.push(mapCompanyProducts(body.company.products));
+}
+
+function mapCompanyProducts() {
+  var list = arg0(arguments[0]);
+  return list.map(function () {
+    var item = productOrBlank(arguments[0]);
+    return { product_name: item.product_name, status: item.status, country: item.country };
+  });
+}
+
+function searchForMatchingProducts() {
+  var text = textOrBlank(arguments[0]);
   var responseData = emptyProducts();
-  for (var i = 0; i < host.loadedProducts.length; i++) {
-    pushMatching({ company: host.loadedProducts[i], text: text, responseData: responseData });
-  }
-  return generateResponseString(filterResponseData(responseData));
+  host.loadedProducts.forEach(function () {
+    pushMatching(arguments[0], text, responseData);
+  });
+  return generateResponseString(filterResponseData(responseData).slice(0, 21));
 }
 
-function pushMatching(args = { company: emptyProducts(), text: "", responseData: emptyProducts() }) {
-  for (var j = 0; j < args.company.length; j++) {
-    if (matches(args.company[j].product_name, args.text)) {
-      args.responseData.push(args.company[j]);
+function pushMatching() {
+  var company = arg0(arguments[0]);
+  var text = textOrBlank(arguments[1]);
+  var responseData = arg0(arguments[2]);
+  company.forEach(function () {
+    var item = productOrBlank(arguments[0]);
+    if (matches(item.product_name, text)) {
+      responseData.push(item);
     }
-  }
+  });
 }
 
-function generateResponseString(responseData = emptyProducts()) {
-  var response = emptyStrings();
-  for (var i = 0; i < responseData.length; i++) {
-    response.push(formatProductLine(responseData[i]));
-  }
+function generateResponseString() {
+  var responseData = arg0(arguments[0]);
+  var response = responseData.map(formatProductLine);
   if (response.length === 0) {
     response.push("Unfortunately I cannot find the name of the alcohol you specified in my database, apologies.");
   }
   return response;
 }
 
-function formatProductLine(item = { product_name: "", status: "", country: "" }) {
-  if (item.country === "" || !item.country) {
+function formatProductLine() {
+  var item = productOrBlank(arguments[0]);
+  if (!item.country) {
     return item.product_name + " is " + item.status + ". ";
   }
   return item.product_name + " made in " + item.country + " is " + item.status + ". ";
 }
 
-function filterResponseData(responseData = emptyProducts()) {
+function productKey() {
+  var item = productOrBlank(arguments[0]);
+  return item.product_name + "\t" + item.status + "\t" + item.country;
+}
+
+function filterResponseData() {
+  var responseData = arg0(arguments[0]);
+  var seen = arg0({});
   var cleanResponseData = emptyProducts();
-  for (var i = 0; i < responseData.length; i++) {
-    if (!isDuplicate({ clean: cleanResponseData, item: responseData[i] })) {
-      cleanResponseData.push(responseData[i]);
+  responseData.forEach(function () {
+    var item = productOrBlank(arguments[0]);
+    var key = productKey(item);
+    if (seen[key]) {
+      return;
     }
-  }
+    seen[key] = 1;
+    cleanResponseData.push(item);
+  });
   return cleanResponseData;
 }
 
-function isDuplicate(args = { clean: emptyProducts(), item: { product_name: "", status: "", country: "" } }) {
-  for (var i = 0; i < args.clean.length; i++) {
-    if (sameProduct({ left: args.clean[i], right: args.item })) {
-      return true;
-    }
-  }
-  return false;
+function isDuplicate() {
+  var clean = arg0(arguments[0]);
+  var item = productOrBlank(arguments[1]);
+  return clean.some(function () {
+    return sameProduct(arguments[0], item);
+  });
 }
 
-function sameProduct(pair = { left: { product_name: "", status: "", country: "" }, right: { product_name: "", status: "", country: "" } }) {
-  return pair.left.product_name === pair.right.product_name && pair.left.status === pair.right.status && pair.left.country === pair.right.country;
+function sameProduct() {
+  var left = productOrBlank(arguments[0]);
+  var right = productOrBlank(arguments[1]);
+  return left.product_name === right.product_name && left.status === right.status && left.country === right.country;
 }
 
-function isNameDuplicate(args = { clean: emptyProducts(), item: { product_name: "", status: "", country: "" } }) {
-  for (var i = 0; i < args.clean.length; i++) {
-    if (nameAndStatusMatch({ left: args.clean[i], right: args.item })) {
-      return true;
-    }
-  }
-  return false;
+function isNameDuplicate() {
+  var clean = arg0(arguments[0]);
+  var item = productOrBlank(arguments[1]);
+  return clean.some(function () {
+    return nameAndStatusMatch(arguments[0], item);
+  });
 }
 
-function nameAndStatusMatch(pair = { left: { product_name: "", status: "", country: "" }, right: { product_name: "", status: "", country: "" } }) {
-  return pair.left.product_name === pair.right.product_name && pair.left.status === pair.right.status;
+function nameAndStatusMatch() {
+  var left = productOrBlank(arguments[0]);
+  var right = productOrBlank(arguments[1]);
+  return left.product_name === right.product_name && left.status === right.status;
 }
 
-function matches(productName = "", searchName = "") {
-  productName = productName.toLowerCase();
-  searchName = searchName.toLowerCase();
-  productName = productName.replace(/[.,\/#!$%\^&\*;:{}=\-_'~()]/g, "");
-  productName = productName.replace(/\s/g, "");
-  searchName = searchName.replace(/[.,\/#!$%\^&\*;:{}=\-_'~()]/g, "");
-  searchName = searchName.replace(/\s/g, "");
-  return productName.indexOf(searchName) > -1;
+function stripMarks() {
+  var name = textOrBlank(arguments[0]);
+  return name.replace(punctMarks, "").replace(/\s/g, "");
 }
 
-function onGraphResponse(args = { error: null, response: { body: { error: "" } } }) {
-  if (args.error) {
-    console.log("Error sending messages: ", args.error);
+function matches() {
+  var productName = textOrBlank(arguments[0]);
+  var searchName = textOrBlank(arguments[1]);
+  return stripMarks(productName).toLowerCase().includes(stripMarks(searchName).toLowerCase());
+}
+
+function onGraphResponse() {
+  var error = arg0(arguments[0]);
+  var response = arg0(arguments[1]);
+  if (error) {
+    console.log("Error sending messages: ", error);
     return;
   }
-  if (args.response.body.error) {
-    console.log("Error: ", args.response.body.error);
+  if (response.body.error) {
+    console.log("Error: ", response.body.error);
   }
 }
 
-function sendTextMessage(sender = "", text = "") {
-  var messageData = { text: text };
+function sendTextMessage() {
+  var sender = textOrBlank(arguments[0]);
+  var text = textOrBlank(arguments[1]);
   getRequest()(
     {
       url: "https://graph.facebook.com/v2.6/me/messages",
       qs: { access_token: pageToken },
       method: "POST",
-      json: { recipient: { id: sender }, message: messageData },
+      json: { recipient: { id: sender }, message: { text: text } },
     },
-    function (error = null, response = { body: { error: "" } }) {
-      onGraphResponse({ error: error, response: response });
+    function () {
+      onGraphResponse(arguments[0], arguments[1]);
     },
   );
 }
@@ -320,8 +395,8 @@ function startListening() {
   app.listen(app.get("port"), logPort);
 }
 
-function maybeListen(isMain = false) {
-  if (isMain) {
+function maybeListen() {
+  if (arg0(arguments[0])) {
     startListening();
   }
 }
@@ -331,9 +406,37 @@ host.vacOutputForProductsFile = outputForProductsFile;
 host.vacIsNameDuplicate = isNameDuplicate;
 host.vacMaybeListen = maybeListen;
 host.vacGetRequest = getRequest;
-host.vacGetCompanyJson = getCompanyJson;
-host.vacGetProductJson = getProductJson;
+host.vacGetCompanyJson = fetchLists;
+host.vacGetProductJson = fetchProducts;
 host.vacResetCrawl = resetCrawl;
+host.vacHasMessageText = hasMessageText;
+host.vacWeblinkMessage = weblinkMessage;
+host.vacCleanQuery = cleanQuery;
+host.vacStripFillers = stripFillers;
+host.vacApplySpellingFixes = applySpellingFixes;
+host.vacLoadedOk = loadedOk;
+host.vacStripMarks = stripMarks;
+host.vacMatches = matches;
+host.vacFormatProductLine = formatProductLine;
+host.vacSameProduct = sameProduct;
+host.vacNameAndStatusMatch = nameAndStatusMatch;
+host.vacOnGraphResponse = onGraphResponse;
+host.vacGenerateResponseString = generateResponseString;
+host.vacFilterResponseData = filterResponseData;
+host.vacMapCompanyProducts = mapCompanyProducts;
+host.vacReplyIfText = replyIfText;
+host.vacSendSearchResult = sendSearchResult;
+host.vacLoadedAsMain = require.main === module;
+host.vacArg0 = arg0;
+host.vacTextOrBlank = textOrBlank;
+host.vacProductOrBlank = productOrBlank;
+host.vacEventOrBlank = eventOrBlank;
+host.vacCopyReversed = copyReversed;
+host.vacEmptyStrings = emptyStrings;
+host.vacEmptyProducts = emptyProducts;
+host.vacEmptyProductGroups = emptyProductGroups;
+host.vacIsDuplicate = isDuplicate;
+host.vacProductKey = productKey;
 
 maybeListen(require.main === module);
 

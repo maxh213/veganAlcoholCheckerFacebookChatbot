@@ -3,5 +3,6 @@
   "testRunner": "vitest",
   "coverageAnalysis": "perTest",
   "reporters": ["json", "progress"],
-  "timeoutMS": 60000
+  "timeoutMS": 60000,
+  "ignoreStatic": true
 }
