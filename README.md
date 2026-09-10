@@ -16,5 +16,6 @@ https://github.com/jw84/messenger-bot-tutorial
 ## Environment
 
 - `PORT` — HTTP port, default 80
+- `NODE_ENV` — Environment setting, set to `test` for running tests
 - `WEBHOOK_TOKEN` — Facebook webhook verify token
 - `FB_PAGE_TOKEN` — Facebook page access token
