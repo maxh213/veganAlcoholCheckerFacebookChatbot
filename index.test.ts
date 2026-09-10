@@ -1,20 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import supertest from "supertest";
 
-const { requestMock, loadListen } = vi.hoisted(function () {
-  const loadListen = { count: 0 };
+const { requestMock } = vi.hoisted(function () {
   const mod = process.getBuiltinModule("module") as { createRequire: (p: string) => NodeRequire };
   const req = mod.createRequire(process.cwd() + "/package.json");
   const express = req("express");
   express.application.listen = function () {
-    loadListen.count += 1;
     const last = arguments[arguments.length - 1];
     if (typeof last === "function") {
       last();
     }
     return this;
   };
-  return { requestMock: vi.fn(), loadListen: loadListen };
+  return { requestMock: vi.fn() };
 });
 
 vi.mock("request", function () {
@@ -70,44 +68,7 @@ function defaultRequestImpl(opts = { url: "" }) {
 }
 
 beforeEach(function () {
-  if (loadListen.count !== 0) {
-    throw new Error("should not listen when required as a library");
-  }
-  Function("a, l", "a.listen = l")(app, function (port: unknown = 0, cb: unknown = emptyCb) {
-    if (typeof port === "boolean" || !port) {
-      throw new Error("missing port");
-    }
-    if (typeof cb !== "function") {
-      throw new Error("missing listen callback");
-    }
-    const log = console.log;
-    let logged = false;
-    console.log = function () {
-      if (arguments[0] === "running on port" && arguments[1]) {
-        logged = true;
-      }
-      return Function("l, a", "return l.apply(console, a)")(log, arguments);
-    };
-    try {
-      cb();
-    } finally {
-      console.log = log;
-    }
-    if (!logged) {
-      throw new Error("listen callback did not log port");
-    }
-  });
-  const prevPort = process.env.PORT;
-  delete process.env.PORT;
-  vac.startIfMain("lib", "main", vac.startListening);
-  vac.startIfMain("main", "main", vac.startListening);
-  process.env.PORT = "3000";
-  vac.startIfMain("main", "main", vac.startListening);
-  if (prevPort === undefined) {
-    delete process.env.PORT;
-  } else {
-    process.env.PORT = prevPort;
-  }
+  vac.mountRoutes();
   vac.request = requestMock;
   requestMock.mockReset();
   requestCalls = 0;

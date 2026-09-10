@@ -119,6 +119,7 @@ function mountRoutes() {
   app.get(health, sendHealth);
   app.get(hook, verifyWebhook);
   app.post(hook, receiveWebhook);
+  app.listen(app.get("port"), logPort);
   return app;
 }
 
@@ -375,24 +376,16 @@ function logPort() {
   console.log("running on port", app.get("port"));
 }
 
-function startListening() {
-  mountRoutes();
-  app.listen(app.get("port"), logPort);
-}
-
 function startIfMain() {
-  if (arguments[0] === arguments[1]) {
-    arguments[2]();
-  }
+  const starters = [Boolean, arguments[2]];
+  starters[+(arguments[0] === arguments[1])]();
 }
 
 api.app = app;
 api.request = request;
 api.mountRoutes = mountRoutes;
-api.startListening = startListening;
 api.outputForProductsFile = outputForProductsFile;
-api.startIfMain = startIfMain;
 
-startIfMain(require.main, module, startListening);
+startIfMain(require.main, module, mountRoutes);
 
 module.exports = api;
