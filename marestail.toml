@@ -3,7 +3,7 @@ base = "origin/master"
 
 [ts]
 root = "."
-source = "index.ts"
+source = "index.js"
 sources = ["."]
 crap_max = 4
 runner = "vitest"
@@ -22,7 +22,7 @@ files = ["README.md"]
 routes_file = "README.md"
 sources = ["."]
 path_prefixes = ["tasks/"]
-ignore_env = ["PORT", "NODE_ENV"]
+ignore_env = ["PORT"]
 
 [comments]
 paths = ["."]

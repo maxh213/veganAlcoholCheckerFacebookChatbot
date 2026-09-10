@@ -1,5 +1,5 @@
 {
-  "entry": ["index.ts"],
-  "project": ["**/*.ts", "**/*.test.js"],
-  "ignore": ["node_modules/**"]
+  "entry": ["index.js"],
+  "project": ["index.js", "**/*.ts", "**/*.test.js"],
+  "ignore": ["slimProducts.js", "secretConstants.js", "node_modules/**"]
 }
