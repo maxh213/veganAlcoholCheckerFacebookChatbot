@@ -11,6 +11,6 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["index.js", "**/*.ts", "**/*.test.js"],
+  "include": ["index.js", "**/*.test.js", "**/*.ts"],
   "exclude": ["node_modules", "slimProducts.js"]
 }
