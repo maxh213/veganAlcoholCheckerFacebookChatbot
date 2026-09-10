@@ -21,7 +21,14 @@ Feature: Vegan alcohol checker Facebook chatbot
   Scenario: Facebook verifies the webhook with the wrong token
     Given WEBHOOK_TOKEN is "test-webhook-token"
     When Facebook GETs /webhook/?hub.verify_token=wrong&hub.challenge=abc123
-    Then the body is exactly "Error, wrong token"
+    Then the HTTP status is 200
+    And the body is exactly "Error, wrong token"
+    And the body is not "abc123"
+
+  Scenario: Facebook verifies the webhook with no token
+    When Facebook GETs /webhook/?hub.challenge=abc123
+    Then the HTTP status is 200
+    And the body is exactly "Error, wrong token"
     And the body is not "abc123"
 
   Scenario: Unknown drink name
@@ -130,6 +137,21 @@ Feature: Vegan alcohol checker Facebook chatbot
     When Facebook POSTs {"entry":[{"messaging":[{"sender":{"id":"111"},"delivery":{"mids":["m1"]}}]}]} to /webhook/
     Then the HTTP status is 200
     And the bot sends no Graph message
+    When Facebook POSTs {"entry":[{"messaging":[]}]} to /webhook/
+    Then the HTTP status is 200
+    And the bot sends no Graph message
     When Facebook Graph returns an error body
     And Facebook POSTs a messaging envelope to /webhook/ for sender "111" with text "Widmer"
     Then the HTTP status is still 200
+
+  Scenario: POST webhook with a null entry is HTTP 500
+    When Facebook POSTs {"object":"page","entry":null} to /webhook/
+    Then the HTTP status is 500
+    And the body contains "TypeError"
+    And the process is still running
+
+  Scenario: POST webhook with an empty entry array is HTTP 500
+    When Facebook POSTs {"object":"page","entry":[]} to /webhook/
+    Then the HTTP status is 500
+    And the body contains "TypeError"
+    And the process is still running
