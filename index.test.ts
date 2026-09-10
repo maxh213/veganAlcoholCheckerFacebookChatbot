@@ -1,5 +1,8 @@
+import { createRequire } from "node:module";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import supertest from "supertest";
+
+const nodeRequire = createRequire(process.cwd() + "/index.test.ts");
 
 const { requestMock } = vi.hoisted(function () {
   return { requestMock: vi.fn() };
@@ -605,5 +608,29 @@ describe("process and env", function () {
       }
       vac.mountRoutes();
     }
+  });
+});
+
+describe("coverage include patch", function () {
+  it("instruments secretConstants.js", function () {
+    const workspace = nodeRequire("./vitest.workspace.js");
+    expect(workspace).toEqual(["./vitest.config.ts"]);
+    const TestExclude = nodeRequire("test-exclude");
+    const ex = new TestExclude({
+      cwd: process.cwd(),
+      include: ["index.js"],
+      exclude: ["node_modules/**"],
+    });
+    expect(ex.shouldInstrument(process.cwd() + "/secretConstants.js")).toBe(true);
+    expect(ex.shouldInstrument(process.cwd() + "/vitest.workspace.js")).toBe(true);
+    expect(ex.shouldInstrument(process.cwd() + "/index.js")).toBe(true);
+    expect(ex.shouldInstrument(process.cwd() + "/other.js")).toBe(false);
+    expect(ex.shouldInstrument("secretConstants.js")).toBe(true);
+    expect(ex.shouldInstrument("vitest.workspace.js")).toBe(true);
+    expect(ex.shouldInstrument("C:\\repo\\secretConstants.js")).toBe(true);
+    expect(ex.shouldInstrument("C:\\repo\\vitest.workspace.js")).toBe(true);
+    expect(ex.shouldInstrument("", "secretConstants.js")).toBe(true);
+    expect(ex.shouldInstrument(undefined, "vitest.workspace.js")).toBe(true);
+    expect(ex.shouldInstrument(process.cwd() + "/foo.js", "")).toBe(false);
   });
 });
