@@ -1,19 +1,20 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import supertest from "supertest";
-import express from "express";
 
 vi.mock("request", () => ({
-  default: vi.fn((_options: unknown, callback: (error: unknown, response: unknown, body: unknown) => void) => callback(null, {}, {})),
+  default: vi.fn((_options, callback) => callback(null, {}, {})),
 }));
 
-let app: any;
-let server: any;
-let getTextFromEvent: (event: any) => string;
+let app;
+let server;
+let getTextFromEvent;
+let handleWebhookMessage;
 
 beforeAll(async () => {
   const mod = await import("./index.js");
   app = mod.default;
   getTextFromEvent = mod.getTextFromEvent;
+  handleWebhookMessage = mod.handleWebhookMessage;
   server = app.listen(0);
 });
 

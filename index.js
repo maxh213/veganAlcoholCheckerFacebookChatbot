@@ -14,28 +14,28 @@ app.set("port", process.env.PORT || 80);
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-app.get("/", (_req: express.Request, res: express.Response) => {
+app.get("/", (_req, res) => {
   res.send("Vegan alcohol checker is up!");
 });
 
-app.get("/webhook/", (req: express.Request, res: express.Response) => {
+app.get("/webhook/", (req, res) => {
   if (req.query.hub_verify_token === WEBHOOK_TOKEN) {
-    res.send(req.query.hub_challenge as string);
+    res.send(req.query.hub_challenge);
   }
   res.send("Error, wrong token");
 });
 
-function normalizeProductText(text: string): string {
+function normalizeProductText(text) {
   return text.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_'~()]/g, "").replace(/\s/g, "");
 }
 
-function matches(productName: string, searchName: string): boolean {
+function matches(productName, searchName) {
   const normalizedProduct = normalizeProductText(productName);
   const normalizedSearch = normalizeProductText(searchName);
   return normalizedProduct.indexOf(normalizedSearch) > -1;
 }
 
-function normalizeSearch(text: string): string {
+function normalizeSearch(text) {
   return text
     .replace("hey, is ", "")
     .replace("Hey, is ", "")
@@ -55,19 +55,13 @@ function normalizeSearch(text: string): string {
     .replace("absolute vodka", "absolut vodka");
 }
 
-interface Product {
-  product_name: string;
-  status: string;
-  country?: string;
-}
-
-function productKey(product: Product): string {
+function productKey(product) {
   return `${product.product_name}|${product.status}|${product.country}`;
 }
 
-function filterResponseData(responseData: Product[]): Product[] {
-  const cleanResponseData: string[] = [];
-  const result: Product[] = [];
+function filterResponseData(responseData) {
+  const cleanResponseData = [];
+  const result = [];
   for (let i = 0; i < responseData.length; i++) {
     const key = productKey(responseData[i]);
     if (!cleanResponseData.includes(key)) {
@@ -78,15 +72,15 @@ function filterResponseData(responseData: Product[]): Product[] {
   return result;
 }
 
-function formatProductResponse(product: Product): string {
+function formatProductResponse(product) {
   if (!product.country || product.country === "") {
     return `${product.product_name} is ${product.status}. `;
   }
   return `${product.product_name} made in ${product.country} is ${product.status}. `;
 }
 
-function generateResponseString(responseData: Product[]): string[] {
-  const response: string[] = [];
+function generateResponseString(responseData) {
+  const response = [];
   for (let i = 0; i < responseData.length; i++) {
     response.push(formatProductResponse(responseData[i]));
   }
@@ -96,8 +90,8 @@ function generateResponseString(responseData: Product[]): string[] {
   return response;
 }
 
-function searchForMatchingProducts(text: string): string[] {
-  const responseData: Product[] = [];
+function searchForMatchingProducts(text) {
+  const responseData = [];
   for (let i = 0; i < loadedProducts.length; i++) {
     for (let j = 0; j < loadedProducts[i].length; j++) {
       if (matches(loadedProducts[i][j].product_name, text)) {
@@ -109,7 +103,7 @@ function searchForMatchingProducts(text: string): string[] {
   return generateResponseString(filtered);
 }
 
-function sendTextMessage(sender: string, text: string): void {
+function sendTextMessage(sender, text) {
   const messageData = { text };
   request(
     {
@@ -121,40 +115,27 @@ function sendTextMessage(sender: string, text: string): void {
         message: messageData,
       },
     },
-    (_error: unknown, _response: unknown, _body: unknown) => {}
+    (_error, _response, _body) => {}
   );
 }
 
-function sendWeblinkResponse(sender: string, originalText: string): void {
+function sendWeblinkResponse(sender, originalText) {
   const messageResponse = `I know a lot of drinks with that name so I made a weblink for you ${URL}${originalText}`;
   sendTextMessage(sender, messageResponse);
 }
 
-function sendMultipleResponses(sender: string, responses: string[]): void {
+function sendMultipleResponses(sender, responses) {
   for (let i = 0; i < responses.length; i++) {
     sendTextMessage(sender, responses[i]);
   }
 }
 
-interface Message {
-  text: string;
-}
-
-interface Sender {
-  id: string;
-}
-
-interface Event {
-  sender?: Sender;
-  message?: Message;
-}
-
-export function getTextFromEvent(event: Event): string {
+export function getTextFromEvent(event) {
   if (!event.message) return "";
   return event.message.text || "";
 }
 
-export function handleWebhookMessage(event: Event, sender: string): void {
+export function handleWebhookMessage(event, sender) {
   const text = normalizeSearch(getTextFromEvent(event));
   const responses = searchForMatchingProducts(text);
   if (responses.length > 20) {
@@ -164,17 +145,17 @@ export function handleWebhookMessage(event: Event, sender: string): void {
   sendMultipleResponses(sender, responses);
 }
 
-function extractSender(event: Event): string | undefined {
+function extractSender(event) {
   if (!event?.sender) return undefined;
   return event.sender.id;
 }
 
-function extractMessageText(event: Event): string | undefined {
+function extractMessageText(event) {
   if (!event?.message) return undefined;
   return event.message.text;
 }
 
-function processEvent(event: Event): void {
+function processEvent(event) {
   const sender = extractSender(event);
   if (!sender) return;
   const text = extractMessageText(event);
@@ -182,15 +163,7 @@ function processEvent(event: Event): void {
   handleWebhookMessage(event, sender);
 }
 
-interface Entry {
-  messaging?: Array<{ sender: Sender; message: Message }>;
-}
-
-interface Body {
-  entry?: Entry[];
-}
-
-function extractEvents(body: Body): Array<{ sender: Sender; message: Message }> {
+function extractEvents(body) {
   const entry = body.entry;
   if (!entry) return [];
   const first = entry[0];
@@ -198,8 +171,8 @@ function extractEvents(body: Body): Array<{ sender: Sender; message: Message }> 
   return first.messaging || [];
 }
 
-app.post("/webhook/", (req: express.Request, res: express.Response) => {
-  const events = extractEvents(req.body as Body);
+app.post("/webhook/", (req, res) => {
+  const events = extractEvents(req.body);
   events.forEach(processEvent);
   res.sendStatus(200);
 });
