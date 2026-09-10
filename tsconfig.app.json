@@ -4,13 +4,14 @@
     "noEmit": true,
     "allowJs": true,
     "checkJs": true,
-    "target": "ES2020",
-    "module": "commonjs",
+    "target": "ES2022",
+    "module": "ES2022",
     "moduleResolution": "node",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["node"]
+    "types": ["node"],
+    "allowImportingTsExtensions": true
   },
-  "include": ["index.js", "**/*.ts", "**/*.test.js"],
-  "exclude": ["node_modules", "slimProducts.js"]
+  "include": ["index.ts", "secretConstants.ts", "slimProducts.ts"],
+  "exclude": ["node_modules", "**/*.test.*"]
 }
