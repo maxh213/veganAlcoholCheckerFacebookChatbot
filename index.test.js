@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach, test } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import request from "supertest";
 import { app, getTextFromEvent, handleWebhookMessage, normalizeProductText, normalizeSearch, matches, productKey, filterResponseData, formatProductResponse, generateResponseArray, searchForMatchingProducts, sendWeblinkResponse } from "./index.js";
 
@@ -90,127 +90,103 @@ describe("POST /webhook/", () => {
 
 describe("normalizeProductText", () => {
   it("converts to lowercase", () => {
-    const result = normalizeProductText("TEST");
-    expect(result).toBe("test");
+    expect(normalizeProductText("TEST")).toBe("test");
   });
 
   it("removes punctuation", () => {
-    const result = normalizeProductText("hello!");
-    expect(result).toBe("hello");
+    expect(normalizeProductText("hello!")).toBe("hello");
   });
 
   it("removes spaces", () => {
-    const result = normalizeProductText("hello world");
-    expect(result).toBe("helloworld");
+    expect(normalizeProductText("hello world")).toBe("helloworld");
   });
 
   it("handles empty string", () => {
-    const result = normalizeProductText("");
-    expect(result).toBe("");
+    expect(normalizeProductText("")).toBe("");
   });
 
   it("handles special chars", () => {
-    const result = normalizeProductText("test@email.com!");
-    expect(result).toBe("test@emailcom");
+    expect(normalizeProductText("test@email.com!")).toBe("test@emailcom");
   });
 });
 
 describe("normalizeSearch", () => {
   it("strips 'hey, is ' prefix", () => {
-    const result = normalizeSearch("hey, is guinness");
-    expect(result).toBe("guinness");
+    expect(normalizeSearch("hey, is guinness")).toBe("guinness");
   });
 
   it("strips 'Hey, is ' prefix", () => {
-    const result = normalizeSearch("Hey, is guinness");
-    expect(result).toBe("guinness");
+    expect(normalizeSearch("Hey, is guinness")).toBe("guinness");
   });
 
   it("strips 'hey is ' prefix", () => {
-    const result = normalizeSearch("hey is guinness");
-    expect(result).toBe("guinness");
+    expect(normalizeSearch("hey is guinness")).toBe("guinness");
   });
 
   it("strips 'Hey is ' prefix", () => {
-    const result = normalizeSearch("Hey is guinness");
-    expect(result).toBe("guinness");
+    expect(normalizeSearch("Hey is guinness")).toBe("guinness");
   });
 
   it("strips 'is ' prefix", () => {
-    const result = normalizeSearch("is guinness");
-    expect(result).toBe("guinness");
+    expect(normalizeSearch("is guinness")).toBe("guinness");
   });
 
   it("strips 'Is ' prefix", () => {
-    const result = normalizeSearch("Is guinness");
-    expect(result).toBe("guinness");
+    expect(normalizeSearch("Is guinness")).toBe("guinness");
   });
 
   it("strips 'IS ' prefix", () => {
-    const result = normalizeSearch("IS guinness");
-    expect(result).toBe("guinness");
+    expect(normalizeSearch("IS guinness")).toBe("guinness");
   });
 
   it("strips 'Are ' prefix", () => {
-    const result = normalizeSearch("Are beers");
-    expect(result).toBe("beers");
+    expect(normalizeSearch("Are beers")).toBe("beers");
   });
 
   it("strips 'are ' prefix", () => {
-    const result = normalizeSearch("are beers");
-    expect(result).toBe("beers");
+    expect(normalizeSearch("are beers")).toBe("beers");
   });
 
   it("strips 'ARE ' prefix", () => {
-    const result = normalizeSearch("ARE beers");
-    expect(result).toBe("beers");
+    expect(normalizeSearch("ARE beers")).toBe("beers");
   });
 
   it("strips 'what about ' prefix", () => {
-    const result = normalizeSearch("what about guinness");
-    expect(result).toBe("guinness");
+    expect(normalizeSearch("what about guinness")).toBe("guinness");
   });
 
   it("strips 'vegan?' suffix", () => {
-    const result = normalizeSearch("guinnessvegan?");
-    expect(result).toBe("guinness");
+    expect(normalizeSearch("guinnessvegan?")).toBe("guinness");
   });
 
   it("strips 'Vegan?' suffix", () => {
-    const result = normalizeSearch("guinnessVegan?");
-    expect(result).toBe("guinness");
+    expect(normalizeSearch("guinnessVegan?")).toBe("guinness");
   });
 
   it("corrects 'guiness' to 'guinness'", () => {
-    const result = normalizeSearch("guiness");
-    expect(result).toBe("guinness");
+    expect(normalizeSearch("guiness")).toBe("guinness");
   });
 
   it("corrects 'Guiness' to 'guinness'", () => {
-    const result = normalizeSearch("Guiness");
-    expect(result).toBe("guinness");
+    expect(normalizeSearch("Guiness")).toBe("guinness");
   });
 
   it("corrects 'absolute vodka' to 'absolut vodka'", () => {
-    const result = normalizeSearch("absolute vodka");
-    expect(result).toBe("absolut vodka");
+    expect(normalizeSearch("absolute vodka")).toBe("absolut vodka");
   });
 });
 
 describe("matches", () => {
   it("matches case-insensitively", () => {
-    const result = matches("Guinness", "guinness");
-    expect(result).toBe(true);
+    expect(matches("Guinness", "guinness")).toBe(true);
   });
 
   it("returns false for no match", () => {
-    const result = matches("Guinness", "beer");
-    expect(result).toBe(false);
+    expect(matches("Guinness", "beer")).toBe(false);
   });
 
   it("matches substring", () => {
-    const result = matches("Guinness Extra Stout", "stout");
-    expect(result).toBe(true);
+    expect(matches("Guinness Extra Stout", "stout")).toBe(true);
   });
 });
 
@@ -244,8 +220,7 @@ describe("handleWebhookMessage", () => {
 
 describe("productKey", () => {
   it("returns unique key for product", () => {
-    const result = productKey({ product_name: "test", status: "vegan", country: "USA" });
-    expect(result).toBe("test|vegan|USA");
+    expect(productKey({ product_name: "test", status: "vegan", country: "USA" })).toBe("test|vegan|USA");
   });
 });
 
@@ -256,33 +231,28 @@ describe("filterResponseData", () => {
       { product_name: "test", status: "vegan", country: "USA" },
       { product_name: "test", status: "vegan", country: "UK" }
     ];
-    const result = filterResponseData(input);
-    expect(result).toHaveLength(2);
+    expect(filterResponseData(input)).toHaveLength(2);
   });
 });
 
 describe("formatProductResponse", () => {
   it("formats product without country", () => {
-    const result = formatProductResponse({ product_name: "test", status: "vegan" });
-    expect(result).toBe("test is vegan. ");
+    expect(formatProductResponse({ product_name: "test", status: "vegan" })).toBe("test is vegan. ");
   });
 
   it("formats product with empty country", () => {
-    const result = formatProductResponse({ product_name: "test", status: "vegan", country: "" });
-    expect(result).toBe("test is vegan. ");
+    expect(formatProductResponse({ product_name: "test", status: "vegan", country: "" })).toBe("test is vegan. ");
   });
 
   it("formats product with country", () => {
-    const result = formatProductResponse({ product_name: "test", status: "vegan", country: "USA" });
-    expect(result).toBe("test made in USA is vegan. ");
+    expect(formatProductResponse({ product_name: "test", status: "vegan", country: "USA" })).toBe("test made in USA is vegan. ");
   });
 });
 
 describe("generateResponseArray", () => {
   it("formats products", () => {
     const input = [{ product_name: "test", status: "vegan" }];
-    const result = generateResponseArray(input);
-    expect(result).toHaveLength(1);
+    expect(generateResponseArray(input)).toHaveLength(1);
   });
 
   it("returns apology when no products", () => {
@@ -293,87 +263,6 @@ describe("generateResponseArray", () => {
 
 describe("searchForMatchingProducts", () => {
   it("finds matching products", () => {
-    const result = searchForMatchingProducts("guinness");
-    expect(Array.isArray(result)).toBe(true);
+    expect(Array.isArray(searchForMatchingProducts("guinness"))).toBe(true);
   });
 });
-
-describe("extractEvents", () => {
-  it("extracts events from body", () => {
-    const body = {
-      entry: [{
-        id: "123",
-        messaging: [{ sender: { id: "1" }, message: { text: "test" } }]
-      }]
-    };
-    const result = extractEvents(body);
-    expect(result).toHaveLength(1);
-  });
-
-  it("returns empty when no entry", () => {
-    const result = extractEvents({});
-    expect(result).toHaveLength(0);
-  });
-
-  it("returns empty when entry is empty", () => {
-    const result = extractEvents({ entry: [] });
-    expect(result).toHaveLength(0);
-  });
-
-  it("returns empty when entry[0] is empty", () => {
-    const result = extractEvents({ entry: [{}] });
-    expect(result).toHaveLength(0);
-  });
-});
-
-describe("extractSender", () => {
-  it("extracts sender id", () => {
-    const event = { sender: { id: "123" } };
-    const result = extractSender(event);
-    expect(result).toBe("123");
-  });
-
-  it("returns undefined when no sender", () => {
-    const event = {};
-    const result = extractSender(event);
-    expect(result).toBeUndefined();
-  });
-});
-
-describe("extractMessageText", () => {
-  it("extracts message text", () => {
-    const event = { message: { text: "test" } };
-    const result = extractMessageText(event);
-    expect(result).toBe("test");
-  });
-
-  it("returns undefined when no message", () => {
-    const event = {};
-    const result = extractMessageText(event);
-    expect(result).toBeUndefined();
-  });
-});
-
-describe("sendWeblinkResponse", () => {
-  it("sends weblink response", () => {
-    sendWeblinkResponse("sender123", "test message");
-  });
-});
-
-function extractEvents(body) {
-  const entry = body.entry;
-  if (!entry) return [];
-  const first = entry[0];
-  if (!first) return [];
-  return first.messaging || [];
-}
-
-function extractSender(event) {
-  if (!event?.sender) return undefined;
-  return event.sender.id;
-}
-
-function extractMessageText(event) {
-  if (!event?.message) return undefined;
-  return event.message.text;
-}
