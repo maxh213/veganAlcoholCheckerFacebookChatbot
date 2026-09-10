@@ -47,8 +47,8 @@ function normalizeSearch(text: string): string {
     .replace("are ", "")
     .replace("ARE ", "")
     .replace("what about ", "")
-    .replace("vegan?", "")
-    .replace("Vegan?", "")
+    .replace(/vegan[^a-zA-Z0-9_]/g, "")
+    .replace(/vegan$/g, "")
     .replace("guiness", "guinness")
     .replace("Guiness", "guinness")
     .replace("absolute vodka", "absolut vodka");
