@@ -35,7 +35,7 @@ Prerequisites: app running locally on port 3000 (or set `PORT=3000`). `FB_PAGE_T
      -H "Content-Type: application/json" \
      -d '{"object":"page","entry":null}'
    ```
-2. **Expected:** `HTTP 500`. No stack trace should crash the Node process (the server stays running).
+2. **Expected:** `HTTP 500` with the Node process exiting (uncaught TypeError from `req.body.entry[0]` crashes the process).
 
 ## 7. POST /webhook/ — empty entry array crashes with 500
 

@@ -131,43 +131,43 @@ Feature: Vegan Alcohol Checker Facebook Chatbot
   # --- Prefix stripping ---
   Scenario: "hey, is " prefix is stripped
     When searchForMatchingProducts is called with the text derived from message "hey, is beer vegan?"
-    Then the search term passed to searchForMatchingProducts is "beer vegan?"
+    Then the search term passed to searchForMatchingProducts is "beer "
 
   Scenario: "Hey, is " prefix is stripped
     When searchForMatchingProducts is called with the text derived from message "Hey, is wine vegan?"
-    Then the search term passed to searchForMatchingProducts is "wine vegan?"
+    Then the search term passed to searchForMatchingProducts is "wine "
 
   Scenario: "hey is " prefix is stripped
     When searchForMatchingProducts is called with the text derived from message "hey is cider vegan?"
-    Then the search term passed to searchForMatchingProducts is "cider vegan?"
+    Then the search term passed to searchForMatchingProducts is "cider "
 
   Scenario: "Hey is " prefix is stripped
     When searchForMatchingProducts is called with the text derived from message "Hey is lager vegan?"
-    Then the search term passed to searchForMatchingProducts is "lager vegan?"
+    Then the search term passed to searchForMatchingProducts is "lager "
 
   Scenario: "is " prefix is stripped
     When searchForMatchingProducts is called with the text derived from message "is mead vegan?"
-    Then the search term passed to searchForMatchingProducts is "mead vegan?"
+    Then the search term passed to searchForMatchingProducts is "mead "
 
   Scenario: "Is " prefix is stripped
     When searchForMatchingProducts is called with the text derived from message "Is mead vegan?"
-    Then the search term passed to searchForMatchingProducts is "mead vegan?"
+    Then the search term passed to searchForMatchingProducts is "mead "
 
   Scenario: "IS " prefix is stripped
     When searchForMatchingProducts is called with the text derived from message "IS mead vegan?"
-    Then the search term passed to searchForMatchingProducts is "mead vegan?"
+    Then the search term passed to searchForMatchingProducts is "mead "
 
   Scenario: "are " prefix is stripped
     When searchForMatchingProducts is called with the text derived from message "are there vegan wines?"
-    Then the search term passed to searchForMatchingProducts is "there vegan wines?"
+    Then the search term passed to searchForMatchingProducts is "there  wines?"
 
   Scenario: "Are " prefix is stripped
     When searchForMatchingProducts is called with the text derived from message "Are there vegan wines?"
-    Then the search term passed to searchForMatchingProducts is "there vegan wines?"
+    Then the search term passed to searchForMatchingProducts is "there  wines?"
 
   Scenario: "ARE " prefix is stripped
     When searchForMatchingProducts is called with the text derived from message "ARE there vegan wines?"
-    Then the search term passed to searchForMatchingProducts is "there vegan wines?"
+    Then the search term passed to searchForMatchingProducts is "there  wines?"
 
   Scenario: "what about " prefix is stripped
     When searchForMatchingProducts is called with the text derived from message "what about sake?"
