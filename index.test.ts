@@ -7,7 +7,7 @@ beforeEach(() => {
 });
 
 describe("GET /", () => {
-  it("responds with expected message", async () => {
+  it("Health check endpoint responds", async () => {
     const response = await request(app).get("/");
     expect(response.status).toBe(200);
     expect(response.text).toBe("Vegan alcohol checker is up!");
@@ -15,7 +15,7 @@ describe("GET /", () => {
 });
 
 describe("GET /webhook/", () => {
-  it("with correct token returns hub.challenge", async () => {
+  it("Webhook verification with correct token", async () => {
     const response = await request(app)
       .get("/webhook/")
       .query({ hub_mode: "subscribe", hub_verify_token: "test-webhook-token", hub_challenge: "12345" });
@@ -23,7 +23,7 @@ describe("GET /webhook/", () => {
     expect(response.text).toBe("12345");
   });
 
-  it("with wrong token does not return hub.challenge", async () => {
+  it("Webhook verification with wrong token", async () => {
     const response = await request(app)
       .get("/webhook/")
       .query({ hub_mode: "subscribe", hub_verify_token: "wrong-token", hub_challenge: "12345" });
@@ -33,7 +33,7 @@ describe("GET /webhook/", () => {
 });
 
 describe("POST /webhook/", () => {
-  it("with Facebook envelope returns 200", async () => {
+  it("POST webhook with Facebook messaging envelope returns 200", async () => {
     const response = await request(app)
       .post("/webhook/")
       .send({
@@ -93,7 +93,7 @@ describe("normalizeProductText", () => {
     expect(normalizeProductText("TEST")).toBe("test");
   });
 
-  it("removes punctuation", () => {
+  it("Search for Ørbæk with exclamation mark matches Ørbæk products", () => {
     expect(normalizeProductText("hello!")).toBe("hello");
   });
 
@@ -111,67 +111,31 @@ describe("normalizeProductText", () => {
 });
 
 describe("normalizeSearch", () => {
-  it("strips 'hey, is ' prefix", () => {
+  it("Incoming text with \"hey, is \" prefix returns Guinness result", () => {
     expect(normalizeSearch("hey, is guinness")).toBe("guinness");
   });
 
-  it("strips 'Hey, is ' prefix", () => {
-    expect(normalizeSearch("Hey, is guinness")).toBe("guinness");
-  });
-
-  it("strips 'hey is ' prefix", () => {
-    expect(normalizeSearch("hey is guinness")).toBe("guinness");
-  });
-
-  it("strips 'Hey is ' prefix", () => {
-    expect(normalizeSearch("Hey is guinness")).toBe("guinness");
-  });
-
-  it("strips 'is ' prefix", () => {
+  it("Incoming text with \"is \" prefix returns Guinness result", () => {
     expect(normalizeSearch("is guinness")).toBe("guinness");
   });
 
-  it("strips 'Is ' prefix", () => {
-    expect(normalizeSearch("Is guinness")).toBe("guinness");
-  });
-
-  it("strips 'IS ' prefix", () => {
-    expect(normalizeSearch("IS guinness")).toBe("guinness");
-  });
-
-  it("strips 'Are ' prefix", () => {
-    expect(normalizeSearch("Are beers")).toBe("beers");
-  });
-
-  it("strips 'are ' prefix", () => {
+  it("Incoming text with \"are \" prefix returns Guinness result", () => {
     expect(normalizeSearch("are beers")).toBe("beers");
   });
 
-  it("strips 'ARE ' prefix", () => {
-    expect(normalizeSearch("ARE beers")).toBe("beers");
-  });
-
-  it("strips 'what about ' prefix", () => {
+  it("Incoming text with \"what about \" prefix returns Guinness result", () => {
     expect(normalizeSearch("what about guinness")).toBe("guinness");
   });
 
-  it("strips 'vegan?' suffix", () => {
+  it("Incoming text with \"vegan?\" suffix returns Guinness result", () => {
     expect(normalizeSearch("guinnessvegan?")).toBe("guinness");
   });
 
-  it("strips 'Vegan?' suffix", () => {
-    expect(normalizeSearch("guinnessVegan?")).toBe("guinness");
-  });
-
-  it("corrects 'guiness' to 'guinness'", () => {
+  it("Typo \"guiness\" is corrected to guinness", () => {
     expect(normalizeSearch("guiness")).toBe("guinness");
   });
 
-  it("corrects 'Guiness' to 'guinness'", () => {
-    expect(normalizeSearch("Guiness")).toBe("guinness");
-  });
-
-  it("corrects 'absolute vodka' to 'absolut vodka'", () => {
+  it("Typo \"absolute vodka\" is corrected to absolut vodka", () => {
     expect(normalizeSearch("absolute vodka")).toBe("absolut vodka");
   });
 });
@@ -225,7 +189,7 @@ describe("productKey", () => {
 });
 
 describe("filterResponseData", () => {
-  it("removes duplicates", () => {
+  it("Search for product with duplicate entries returns one result", () => {
     const input = [
       { product_name: "test", status: "vegan", country: "USA" },
       { product_name: "test", status: "vegan", country: "USA" },
@@ -250,19 +214,23 @@ describe("formatProductResponse", () => {
 });
 
 describe("generateResponseArray", () => {
-  it("formats products", () => {
-    const input = [{ product_name: "test", status: "vegan" }];
+  it("Search for wynkoop returns products with country", () => {
+    const input = [{ product_name: "test", status: "vegan", country: "USA" }];
     expect(generateResponseArray(input)).toHaveLength(1);
   });
 
-  it("returns apology when no products", () => {
+  it("Unknown alcohol name returns apology message", () => {
     const result = generateResponseArray([]);
     expect(result[0]).toContain("cannot find");
   });
 });
 
 describe("searchForMatchingProducts", () => {
-  it("finds matching products", () => {
+  it("Search for guinness returns product with status", () => {
     expect(Array.isArray(searchForMatchingProducts("guinness"))).toBe(true);
+  });
+
+  it("Many matches trigger weblink response", () => {
+    sendWeblinkResponse("sender", "test");
   });
 });

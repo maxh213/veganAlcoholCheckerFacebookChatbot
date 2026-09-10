@@ -1,5 +1,5 @@
 export default [
-  { ignores: ["node_modules/**", "slimProducts.js", "reports/**", ".marestail/**"] },
+  { ignores: ["node_modules/**", "slimProducts.js", "reports/**", ".marestail/**", "coverage/**"] },
   {
     files: ["index.ts", "index.test.ts"],
     languageOptions: {
