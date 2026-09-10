@@ -1,18 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import supertest from "supertest";
 
-const { requestMock } = vi.hoisted(function () {
+const { requestMock, listenPorts } = vi.hoisted(function () {
+  const listenPorts: unknown[] = [];
   const mod = process.getBuiltinModule("module") as { createRequire: (p: string) => NodeRequire };
   const req = mod.createRequire(process.cwd() + "/package.json");
   const express = req("express");
   express.application.listen = function () {
+    listenPorts.push(arguments[0]);
     const last = arguments[arguments.length - 1];
     if (typeof last === "function") {
       last();
     }
     return this;
   };
-  return { requestMock: vi.fn() };
+  return { requestMock: vi.fn(), listenPorts };
 });
 
 vi.mock("request", function () {
@@ -595,6 +597,31 @@ describe("catalogue refresh", function () {
 });
 
 describe("process and env", function () {
+  it("listens on PORT or 80 and logs running on port", function () {
+    const log = vi.spyOn(console, "log").mockImplementation(function () {});
+    const prev = process.env.PORT;
+    try {
+      delete process.env.PORT;
+      listenPorts.length = 0;
+      vac.mountRoutes();
+      expect(listenPorts[0]).toBe(80);
+      expect(log).toHaveBeenCalledWith("running on port", 80);
+      process.env.PORT = "3000";
+      listenPorts.length = 0;
+      log.mockClear();
+      vac.mountRoutes();
+      expect(listenPorts[0]).toBe("3000");
+      expect(log).toHaveBeenCalledWith("running on port", "3000");
+    } finally {
+      if (prev === undefined) {
+        delete process.env.PORT;
+      } else {
+        process.env.PORT = prev;
+      }
+      log.mockRestore();
+    }
+  });
+
   it("reads token fallbacks from the environment", async function () {
     const prevHook = process.env.WEBHOOK_TOKEN;
     const prevPage = process.env.FB_PAGE_TOKEN;

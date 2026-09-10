@@ -55,14 +55,6 @@ function urlencodedOptions() {
   return { extended: false };
 }
 
-function healthPath() {
-  return String.fromCodePoint(47);
-}
-
-function webhookPath() {
-  return healthPath() + "webhook" + healthPath();
-}
-
 function weblinkBase() {
   return "www.vacfb.site/a?n=";
 }
@@ -111,12 +103,11 @@ function receiveWebhook() {
 function mountRoutes() {
   app.set("port", process.env.PORT || 80);
   const form = urlencodedOptions();
-  const health = healthPath();
-  const hook = webhookPath();
-  loadCatalogue();
+  const slash = String.fromCodePoint(47);
+  const hook = slash + "webhook" + slash;
   app.use(bodyParser.urlencoded(form));
   app.use(bodyParser.json());
-  app.get(health, sendHealth);
+  app.get(slash, sendHealth);
   app.get(hook, verifyWebhook);
   app.post(hook, receiveWebhook);
   app.listen(app.get("port"), logPort);
@@ -376,16 +367,11 @@ function logPort() {
   console.log("running on port", app.get("port"));
 }
 
-function startIfMain() {
-  const starters = [Boolean, arguments[2]];
-  starters[+(arguments[0] === arguments[1])]();
-}
-
 api.app = app;
 api.request = request;
 api.mountRoutes = mountRoutes;
 api.outputForProductsFile = outputForProductsFile;
 
-startIfMain(require.main, module, mountRoutes);
+mountRoutes();
 
 module.exports = api;
