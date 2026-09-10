@@ -1,15 +1,13 @@
 export default [
-  { ignores: ["node_modules/**", "slimProducts.js", "reports/**", "coverage/**", ".marestail/**"] },
+  { ignores: ["node_modules/**", "slimProducts.js", "reports/**"] },
   {
     files: ["index.js", "**/*.test.js", "**/*.ts"],
     languageOptions: {
       ecmaVersion: 2020,
-      sourceType: "module",
+      sourceType: "commonjs",
     },
     rules: {
       complexity: ["error", 4],
-      "no-unused-vars": "off",
-      "@typescript-eslint/no-unused-vars": "off",
     },
   },
 ];
