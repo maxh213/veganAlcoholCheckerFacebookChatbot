@@ -19,24 +19,24 @@
    - Expected: Response body is "Error, wrong token" (not the challenge)
 
 4. **Facebook webhook posts**
-   - Action: POST /webhook/ with body: {"entry": [{"messaging": [{"sender": {"id": "test123"}, "message": {"text": "guinness"}}]}]}
+   - Action: POST /webhook/ with body: {"entry": [{"messaging": [{"sender": {"id": "test123"}, "message": {"text": "test"}}]}]}
    - Expected: Status code 200
 
-5. **Search is case-insensitive**
-   - Action: POST /webhook/ with message "GUINNESS"
-   - Expected: Matches products containing "guinness"
+5. **Search matches products case-insensitively**
+   - Action: POST /webhook/ with message "ØRBAEK IPA"
+   - Expected: Matches products containing "Ørbæk IPA"
 
 6. **Search strips punctuation**
-   - Action: POST /webhook/ with message "guinness!"
-   - Expected: Matches products containing "guinness"
+   - Action: POST /webhook/ with message "Ægir!"
+   - Expected: Matches products containing "Ægir"
 
 7. **Search strips spaces**
-   - Action: POST /webhook/ with message "guin ness"
-   - Expected: Matches products containing "guinness"
+   - Action: POST /webhook/ with message "Y o r k"
+   - Expected: Matches products containing "York"
 
 8. **Duplicate products appear once**
-   - Action: Search for a product with duplicates in the database
-   - Expected: Only one result shown
+   - Action: POST /webhook/ with message "Wynkoop Rocky Mountain Oyster Stout"
+   - Expected: Only one result shown even though duplicates exist in database
 
 9. **Unknown name returns error**
    - Action: POST /webhook/ with message "unknowndrinkxyz123"
@@ -51,29 +51,61 @@
     - Expected: Individual message per result with country when present
 
 12. **Prefix stripping: hey, is**
-    - Action: POST /webhook/ with message "hey, is guiness"
-    - Expected: Search uses "guinness"
+    - Action: POST /webhook/ with message "hey, is Ørbæk"
+    - Expected: Matches products containing "Ørbæk"
 
-13. **Prefix stripping: is**
-    - Action: POST /webhook/ with message "is guiness"
-    - Expected: Search uses "guinness"
+13. **Prefix stripping: Hey, is**
+    - Action: POST /webhook/ with message "Hey, is Ørbæk"
+    - Expected: Matches products containing "Ørbæk"
 
-14. **Prefix stripping: are**
-    - Action: POST /webhook/ with message "are guiness"
-    - Expected: Search uses "guinness"
+14. **Prefix stripping: hey is**
+    - Action: POST /webhook/ with message "hey is Ørbæk"
+    - Expected: Matches products containing "Ørbæk"
 
-15. **Prefix stripping: what about**
-    - Action: POST /webhook/ with message "what about guiness"
-    - Expected: Search uses "guinness"
+15. **Prefix stripping: Hey is**
+    - Action: POST /webhook/ with message "Hey is Ørbæk"
+    - Expected: Matches products containing "Ørbæk"
 
-16. **Prefix stripping: vegan?**
-    - Action: POST /webhook/ with message "guinness vegan?"
-    - Expected: Search uses "guinness"
+16. **Prefix stripping: is**
+    - Action: POST /webhook/ with message "is Ørbæk"
+    - Expected: Matches products containing "Ørbæk"
 
-17. **Spelling fix: guiness**
+17. **Prefix stripping: Is**
+    - Action: POST /webhook/ with message "Is Ørbæk"
+    - Expected: Matches products containing "Ørbæk"
+
+18. **Prefix stripping: IS**
+    - Action: POST /webhook/ with message "IS Ørbæk"
+    - Expected: Matches products containing "Ørbæk"
+
+19. **Prefix stripping: Are**
+    - Action: POST /webhook/ with message "Are Ørbæk"
+    - Expected: Matches products containing "Ørbæk"
+
+20. **Prefix stripping: are**
+    - Action: POST /webhook/ with message "are Ørbæk"
+    - Expected: Matches products containing "Ørbæk"
+
+21. **Prefix stripping: ARE**
+    - Action: POST /webhook/ with message "ARE Ørbæk"
+    - Expected: Matches products containing "Ørbæk"
+
+22. **Prefix stripping: what about**
+    - Action: POST /webhook/ with message "what about Ørbæk"
+    - Expected: Matches products containing "Ørbæk"
+
+23. **Prefix stripping: vegan?**
+    - Action: POST /webhook/ with message "Ørbæk vegan?"
+    - Expected: Matches products containing "Ørbæk"
+
+24. **Prefix stripping: Vegan?**
+    - Action: POST /webhook/ with message "Ørbæk Vegan?"
+    - Expected: Matches products containing "Ørbæk"
+
+25. **Spelling fix: guiness**
     - Action: POST /webhook/ with message "guiness"
     - Expected: Search uses "guinness"
 
-18. **Spelling fix: absolute vodka**
+26. **Spelling fix: absolute vodka**
     - Action: POST /webhook/ with message "absolute vodka"
     - Expected: Search uses "absolut vodka"

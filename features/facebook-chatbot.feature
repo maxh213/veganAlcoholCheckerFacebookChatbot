@@ -22,21 +22,21 @@ Feature: Facebook chatbot endpoint verification
     Then the response status code is 200
     And the request to sendTextMessage uses the environment token "FB_PAGE_TOKEN"
 
-  Scenario: Search is case-insensitive
-    When I send a POST request with message text "guinness"
-    Then the response matches products with name "Ørbæk IPA"
+  Scenario: Search matches products case-insensitively
+    When I send a POST request with message text "Ørbæk IPA"
+    Then the response contains product "Ørbæk IPA"
 
   Scenario: Search strips punctuation
-    When I send a POST request with message text "Guinness!"
-    Then the response matches products with name "Ørbæk IPA"
+    When I send a POST request with message text "Ægir!"
+    Then the response contains products matching "Ægir"
 
   Scenario: Search strips spaces
-    When I send a POST request with message text "guin ness"
-    Then the response matches products with name "Ørbæk IPA"
+    When I send a POST request with message text "Y o r k  B e e r s"
+    Then the response contains products matching "York Beers"
 
-  Scenario: Duplicate products appear once
-    Given the search returns products with same name status and country
-    Then the response contains only one entry
+  Scenario: Duplicate products with same name, status, and country appear once
+    When I send a POST request with message text "Wynkoop Rocky Mountain Oyster Stout"
+    Then the response contains the product "Wynkoop Rocky Mountain Oyster Stout" once
 
   Scenario: Unknown name returns error message
     When I send a POST request with message text "unknowndrinkxyz123"
@@ -52,30 +52,62 @@ Feature: Facebook chatbot endpoint verification
     Then the response contains individual messages per product
     And each message with a country includes it in the format "made in {country}"
 
-  Scenario: Incoming text has prefixes stripped
-    When I send a POST request with message text "hey, is guiness"
-    Then the search uses the text "guinness"
+  Scenario: Incoming text has "hey, is " prefix stripped
+    When I send a POST request with message text "hey, is Ørbæk"
+    Then the response contains products matching "Ørbæk"
 
-  Scenario: Incoming text has "is " stripped
-    When I send a POST request with message text "is guiness"
-    Then the search uses the text "guinness"
+  Scenario: Incoming text has "Hey, is " prefix stripped
+    When I send a POST request with message text "Hey, is Ørbæk"
+    Then the response contains products matching "Ørbæk"
 
-  Scenario: Incoming text has "are " stripped
-    When I send a POST request with message text "are guiness"
-    Then the search uses the text "guinness"
+  Scenario: Incoming text has "hey is " prefix stripped
+    When I send a POST request with message text "hey is Ørbæk"
+    Then the response contains products matching "Ørbæk"
 
-  Scenario: Incoming text has "what about " stripped
-    When I send a POST request with message text "what about guiness"
-    Then the search uses the text "guinness"
+  Scenario: Incoming text has "Hey is " prefix stripped
+    When I send a POST request with message text "Hey is Ørbæk"
+    Then the response contains products matching "Ørbæk"
 
-  Scenario: Incoming text has "vegan?" stripped
-    When I send a POST request with message text "guinness vegan?"
-    Then the search uses the text "guinness"
+  Scenario: Incoming text has "is " prefix stripped
+    When I send a POST request with message text "is Ørbæk"
+    Then the response contains products matching "Ørbæk"
+
+  Scenario: Incoming text has "Is " prefix stripped
+    When I send a POST request with message text "Is Ørbæk"
+    Then the response contains products matching "Ørbæk"
+
+  Scenario: Incoming text has "IS " prefix stripped
+    When I send a POST request with message text "IS Ørbæk"
+    Then the response contains products matching "Ørbæk"
+
+  Scenario: Incoming text has "Are " prefix stripped
+    When I send a POST request with message text "Are Ørbæk"
+    Then the response contains products matching "Ørbæk"
+
+  Scenario: Incoming text has "are " prefix stripped
+    When I send a POST request with message text "are Ørbæk"
+    Then the response contains products matching "Ørbæk"
+
+  Scenario: Incoming text has "ARE " prefix stripped
+    When I send a POST request with message text "ARE Ørbæk"
+    Then the response contains products matching "Ørbæk"
+
+  Scenario: Incoming text has "what about " prefix stripped
+    When I send a POST request with message text "what about Ørbæk"
+    Then the response contains products matching "Ørbæk"
+
+  Scenario: Incoming text has "vegan?" suffix stripped
+    When I send a POST request with message text "Ørbæk vegan?"
+    Then the response contains products matching "Ørbæk"
+
+  Scenario: Incoming text has "Vegan?" suffix stripped
+    When I send a POST request with message text "Ørbæk Vegan?"
+    Then the response contains products matching "Ørbæk"
 
   Scenario: Guiness is rewritten to Guinness
     When I send a POST request with message text "guiness"
-    Then the search uses the text "guinness"
+    Then the response matches text "guinness"
 
   Scenario: Absolute vodka is rewritten to Absolut vodka
     When I send a POST request with message text "absolute vodka"
-    Then the search uses the text "absolut vodka"
+    Then the response matches text "absolut vodka"
