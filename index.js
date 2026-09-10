@@ -1,53 +1,26 @@
 var express = require("express");
 var bodyParser = require("body-parser");
 var request = require("request");
-var host = Function("return this")();
-var catalogueFile = "./slimProducts";
-var secretsFile = "./secretConstants";
-require(catalogueFile);
-require(secretsFile);
 
 var app = express();
-var weblinkBase = "www.vacfb.site/a?n=";
-var beerURL = "http://www.barnivore.com/beer.json";
-var wineURL = "http://barnivore.com/wine.json";
-var liquorURL = "http://barnivore.com/liquor.json";
-var companyURLs = emptyStrings();
-var products = emptyProductGroups();
-var webhookToken = process.env.WEBHOOK_TOKEN || "test-webhook-token";
-var pageToken = process.env.FB_PAGE_TOKEN || "test-page-token";
-var punctMarks = /[.,\/#!$%\^&\*;:{}=\-_'~()]/g;
-var blankProduct = { product_name: "", status: "", country: "" };
-var blankEvent = { message: { text: "" }, sender: { id: "" } };
+var api = Object.create(null);
+var mounted = 0;
 
-app.set("port", process.env.PORT || 80);
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
-app.get("/", function (req, res) {
-  res.send("Vegan alcohol checker is up!");
-});
-app.get("/webhook/", function (req, res) {
-  if (req.query["hub.verify_token"] === webhookToken) {
-    res.send(req.query["hub.challenge"]);
-  }
-  res.send("Error, wrong token");
-});
-app.post("/webhook/", function (req, res) {
-  req.body.entry[0].messaging.forEach(replyIfText);
-  res.sendStatus(200);
-});
+function asAny() {
+  return arguments[0];
+}
 
 function arg0() {
   return arguments[0];
 }
 
 function emptyStrings() {
-  return Object.keys({}).map(String);
+  return [];
 }
 
 function emptyProducts() {
   var out = [];
-  out.push(blankProduct);
+  out.push(blankProduct());
   out.pop();
   return out;
 }
@@ -59,12 +32,36 @@ function emptyProductGroups() {
   return out;
 }
 
+function cataloguePath() {
+  return "./slimProducts";
+}
+
+function secretsPath() {
+  return "./secretConstants";
+}
+
+function loadCatalogue() {
+  require(cataloguePath());
+}
+
+function loadSecrets() {
+  require(secretsPath());
+}
+
+function blankProduct() {
+  return { product_name: "", status: "", country: "" };
+}
+
+function blankEvent() {
+  return { message: { text: "" }, sender: { id: "" } };
+}
+
 function eventOrBlank() {
-  return arg0(arguments[0]) || blankEvent;
+  return arg0(arguments[0]) || blankEvent();
 }
 
 function productOrBlank() {
-  return arg0(arguments[0]) || blankProduct;
+  return arg0(arguments[0]) || blankProduct();
 }
 
 function textOrBlank() {
@@ -73,6 +70,65 @@ function textOrBlank() {
     return text;
   }
   return "";
+}
+
+function webhookToken() {
+  return process.env.WEBHOOK_TOKEN || "test-webhook-token";
+}
+
+function pageToken() {
+  return process.env.FB_PAGE_TOKEN || "test-page-token";
+}
+
+function listenPort() {
+  return process.env.PORT || 80;
+}
+
+function urlencodedOptions() {
+  return { extended: false };
+}
+
+function weblinkBase() {
+  return "www.vacfb.site/a?n=";
+}
+
+function catalogueUrls() {
+  return ["http://www.barnivore.com/beer.json", "http://barnivore.com/wine.json", "http://barnivore.com/liquor.json"];
+}
+
+function punctMarks() {
+  return /[.,\/#!$%\^&\*;:{}=\-_'~()]/g;
+}
+
+function loadedCatalogue() {
+  loadCatalogue();
+  return asAny(globalThis).loadedProducts;
+}
+
+function mountRoutes() {
+  if (mounted !== 0) {
+    return app;
+  }
+  mounted = 1;
+  loadSecrets();
+  loadCatalogue();
+  app.set("port", listenPort());
+  app.use(bodyParser.urlencoded(urlencodedOptions()));
+  app.use(bodyParser.json());
+  app.get("/", function (req, res) {
+    res.send("Vegan alcohol checker is up!");
+  });
+  app.get("/webhook/", function (req, res) {
+    if (req.query["hub.verify_token"] === webhookToken()) {
+      res.send(req.query["hub.challenge"]);
+    }
+    res.send("Error, wrong token");
+  });
+  app.post("/webhook/", function (req, res) {
+    req.body.entry[0].messaging.forEach(replyIfText);
+    res.sendStatus(200);
+  });
+  return app;
 }
 
 function replyIfText() {
@@ -109,7 +165,7 @@ function sendEachMatch() {
 }
 
 function weblinkMessage() {
-  return "I know a lot of drinks with that name so I made a weblink for you " + weblinkBase + textOrBlank(arguments[0]);
+  return "I know a lot of drinks with that name so I made a weblink for you " + weblinkBase() + textOrBlank(arguments[0]);
 }
 
 function cleanQuery() {
@@ -143,17 +199,17 @@ function applySpellingFixes() {
 }
 
 function resetCrawl() {
-  products = emptyProductGroups();
-  companyURLs = emptyStrings();
+  api.products = emptyProductGroups();
+  api.companyURLs = emptyStrings();
 }
 
 function outputForProductsFile() {
   resetCrawl();
-  fetchLists([beerURL, wineURL, liquorURL]);
+  fetchLists(catalogueUrls());
 }
 
 function getRequest() {
-  return host.vacRequest || request;
+  return api.request || request;
 }
 
 function copyReversed() {
@@ -168,7 +224,7 @@ function fetchLists() {
     fetchList(arguments[0], failed);
   });
   if (failed[0] === 0) {
-    fetchProducts(companyURLs);
+    fetchProducts(api.companyURLs);
   }
 }
 
@@ -211,7 +267,7 @@ function pushCompanyUrls() {
   var body = arg0(arguments[0]);
   body.forEach(function () {
     var row = arguments[0];
-    companyURLs.push("http://www.barnivore.com/company/" + row.company.id + ".json");
+    api.companyURLs.push("http://www.barnivore.com/company/" + row.company.id + ".json");
   });
 }
 
@@ -223,8 +279,8 @@ function fetchProducts() {
   });
   if (failed[0] === 0) {
     console.log("Product load complete.");
-    console.log(products);
-    host.loading = false;
+    console.log(api.products);
+    api.loading = false;
   }
 }
 
@@ -250,7 +306,7 @@ function onProductResponse() {
     return;
   }
   console.log(url + " loaded!");
-  products.push(mapCompanyProducts(body.company.products));
+  api.products.push(mapCompanyProducts(body.company.products));
 }
 
 function mapCompanyProducts() {
@@ -264,7 +320,7 @@ function mapCompanyProducts() {
 function searchForMatchingProducts() {
   var text = textOrBlank(arguments[0]);
   var responseData = emptyProducts();
-  host.loadedProducts.forEach(function () {
+  loadedCatalogue().forEach(function () {
     pushMatching(arguments[0], text, responseData);
   });
   return generateResponseString(filterResponseData(responseData).slice(0, 21));
@@ -350,7 +406,7 @@ function nameAndStatusMatch() {
 
 function stripMarks() {
   var name = textOrBlank(arguments[0]);
-  return name.replace(punctMarks, "").replace(/\s/g, "");
+  return name.replace(punctMarks(), "").replace(/\s/g, "");
 }
 
 function matches() {
@@ -377,7 +433,7 @@ function sendTextMessage() {
   getRequest()(
     {
       url: "https://graph.facebook.com/v2.6/me/messages",
-      qs: { access_token: pageToken },
+      qs: { access_token: pageToken() },
       method: "POST",
       json: { recipient: { id: sender }, message: { text: text } },
     },
@@ -392,6 +448,7 @@ function logPort() {
 }
 
 function startListening() {
+  mountRoutes();
   app.listen(app.get("port"), logPort);
 }
 
@@ -401,43 +458,61 @@ function maybeListen() {
   }
 }
 
-host.vacStartListening = startListening;
-host.vacOutputForProductsFile = outputForProductsFile;
-host.vacIsNameDuplicate = isNameDuplicate;
-host.vacMaybeListen = maybeListen;
-host.vacGetRequest = getRequest;
-host.vacGetCompanyJson = fetchLists;
-host.vacGetProductJson = fetchProducts;
-host.vacResetCrawl = resetCrawl;
-host.vacHasMessageText = hasMessageText;
-host.vacWeblinkMessage = weblinkMessage;
-host.vacCleanQuery = cleanQuery;
-host.vacStripFillers = stripFillers;
-host.vacApplySpellingFixes = applySpellingFixes;
-host.vacLoadedOk = loadedOk;
-host.vacStripMarks = stripMarks;
-host.vacMatches = matches;
-host.vacFormatProductLine = formatProductLine;
-host.vacSameProduct = sameProduct;
-host.vacNameAndStatusMatch = nameAndStatusMatch;
-host.vacOnGraphResponse = onGraphResponse;
-host.vacGenerateResponseString = generateResponseString;
-host.vacFilterResponseData = filterResponseData;
-host.vacMapCompanyProducts = mapCompanyProducts;
-host.vacReplyIfText = replyIfText;
-host.vacSendSearchResult = sendSearchResult;
-host.vacLoadedAsMain = require.main === module;
-host.vacArg0 = arg0;
-host.vacTextOrBlank = textOrBlank;
-host.vacProductOrBlank = productOrBlank;
-host.vacEventOrBlank = eventOrBlank;
-host.vacCopyReversed = copyReversed;
-host.vacEmptyStrings = emptyStrings;
-host.vacEmptyProducts = emptyProducts;
-host.vacEmptyProductGroups = emptyProductGroups;
-host.vacIsDuplicate = isDuplicate;
-host.vacProductKey = productKey;
+api.app = app;
+api.mountRoutes = mountRoutes;
+api.startListening = startListening;
+api.outputForProductsFile = outputForProductsFile;
+api.isNameDuplicate = isNameDuplicate;
+api.maybeListen = maybeListen;
+api.getRequest = getRequest;
+api.getCompanyJson = fetchLists;
+api.getProductJson = fetchProducts;
+api.resetCrawl = resetCrawl;
+api.hasMessageText = hasMessageText;
+api.weblinkMessage = weblinkMessage;
+api.cleanQuery = cleanQuery;
+api.stripFillers = stripFillers;
+api.applySpellingFixes = applySpellingFixes;
+api.loadedOk = loadedOk;
+api.stripMarks = stripMarks;
+api.matches = matches;
+api.formatProductLine = formatProductLine;
+api.sameProduct = sameProduct;
+api.nameAndStatusMatch = nameAndStatusMatch;
+api.onGraphResponse = onGraphResponse;
+api.generateResponseString = generateResponseString;
+api.filterResponseData = filterResponseData;
+api.mapCompanyProducts = mapCompanyProducts;
+api.replyIfText = replyIfText;
+api.sendSearchResult = sendSearchResult;
+api.loadedAsMain = Object.is(require.main, module);
+api.arg0 = arg0;
+api.textOrBlank = textOrBlank;
+api.productOrBlank = productOrBlank;
+api.eventOrBlank = eventOrBlank;
+api.copyReversed = copyReversed;
+api.emptyStrings = emptyStrings;
+api.emptyProducts = emptyProducts;
+api.emptyProductGroups = emptyProductGroups;
+api.isDuplicate = isDuplicate;
+api.productKey = productKey;
+api.webhookToken = webhookToken;
+api.pageToken = pageToken;
+api.listenPort = listenPort;
+api.urlencodedOptions = urlencodedOptions;
+api.blankProduct = blankProduct;
+api.blankEvent = blankEvent;
+api.catalogueUrls = catalogueUrls;
+api.weblinkBase = weblinkBase;
+api.punctMarks = punctMarks;
+api.asAny = asAny;
+api.startIfMain = require("./startIfMain");
+api.loadedCatalogue = loadedCatalogue;
+api.cataloguePath = cataloguePath;
+api.secretsPath = secretsPath;
+api.loadCatalogue = loadCatalogue;
+api.loadSecrets = loadSecrets;
 
-maybeListen(require.main === module);
+require("./startIfMain")(require.main, module, startListening);
 
-module.exports = app;
+module.exports = api;
