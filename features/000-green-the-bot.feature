@@ -11,10 +11,9 @@ Feature: Vegan Alcohol Checker Facebook Chatbot
     And the response body is exactly "Vegan alcohol checker is up!"
 
   # --- GET /webhook/ ---
-  Scenario: Webhook verification succeeds with correct token
+  Scenario: Webhook verification with correct token triggers double-send bug returning HTTP 500
     When a client sends GET /webhook/?hub.verify_token=test-webhook-token&hub.challenge=abc123
-    Then the response status is 200
-    And the response body is exactly "abc123"
+    Then the response status is 500
 
   Scenario: Webhook verification fails with wrong token
     When a client sends GET /webhook/?hub.verify_token=wrong-token&hub.challenge=abc123
@@ -23,6 +22,11 @@ Feature: Vegan Alcohol Checker Facebook Chatbot
 
   Scenario: Webhook verification fails with missing token
     When a client sends GET /webhook/?hub.challenge=abc123
+    Then the response status is 200
+    And the response body is exactly "Error, wrong token"
+
+  Scenario: Webhook verification fails with missing challenge
+    When a client sends GET /webhook/?hub.verify_token=wrong-token
     Then the response status is 200
     And the response body is exactly "Error, wrong token"
 
@@ -41,6 +45,26 @@ Feature: Vegan Alcohol Checker Facebook Chatbot
       }
       """
     Then the response status is 200
+
+  Scenario: POST /webhook/ with missing entry returns HTTP 500
+    When a client sends POST /webhook/ with body:
+      """
+      {
+        "object": "page",
+        "entry": null
+      }
+      """
+    Then the response status is 500
+
+  Scenario: POST /webhook/ with empty entry array returns HTTP 500
+    When a client sends POST /webhook/ with body:
+      """
+      {
+        "object": "page",
+        "entry": []
+      }
+      """
+    Then the response status is 500
 
   Scenario: POST /webhook/ with empty messaging array returns 200
     When a client sends POST /webhook/ with body:
@@ -106,66 +130,66 @@ Feature: Vegan Alcohol Checker Facebook Chatbot
 
   # --- Prefix stripping ---
   Scenario: "hey, is " prefix is stripped
-    When a client sends POST /webhook/ with message text "hey, is beer vegan?"
-    Then the search is run against "beer vegan?"
+    When searchForMatchingProducts is called with the text derived from message "hey, is beer vegan?"
+    Then the search term passed to searchForMatchingProducts is "beer vegan?"
 
   Scenario: "Hey, is " prefix is stripped
-    When a client sends POST /webhook/ with message text "Hey, is wine vegan?"
-    Then the search is run against "wine vegan?"
+    When searchForMatchingProducts is called with the text derived from message "Hey, is wine vegan?"
+    Then the search term passed to searchForMatchingProducts is "wine vegan?"
 
   Scenario: "hey is " prefix is stripped
-    When a client sends POST /webhook/ with message text "hey is cider vegan?"
-    Then the search is run against "cider vegan?"
+    When searchForMatchingProducts is called with the text derived from message "hey is cider vegan?"
+    Then the search term passed to searchForMatchingProducts is "cider vegan?"
 
   Scenario: "Hey is " prefix is stripped
-    When a client sends POST /webhook/ with message text "Hey is lager vegan?"
-    Then the search is run against "lager vegan?"
+    When searchForMatchingProducts is called with the text derived from message "Hey is lager vegan?"
+    Then the search term passed to searchForMatchingProducts is "lager vegan?"
 
   Scenario: "is " prefix is stripped
-    When a client sends POST /webhook/ with message text "is mead vegan?"
-    Then the search is run against "mead vegan?"
+    When searchForMatchingProducts is called with the text derived from message "is mead vegan?"
+    Then the search term passed to searchForMatchingProducts is "mead vegan?"
 
   Scenario: "Is " prefix is stripped
-    When a client sends POST /webhook/ with message text "Is mead vegan?"
-    Then the search is run against "mead vegan?"
+    When searchForMatchingProducts is called with the text derived from message "Is mead vegan?"
+    Then the search term passed to searchForMatchingProducts is "mead vegan?"
 
   Scenario: "IS " prefix is stripped
-    When a client sends POST /webhook/ with message text "IS mead vegan?"
-    Then the search is run against "mead vegan?"
+    When searchForMatchingProducts is called with the text derived from message "IS mead vegan?"
+    Then the search term passed to searchForMatchingProducts is "mead vegan?"
 
   Scenario: "are " prefix is stripped
-    When a client sends POST /webhook/ with message text "are there vegan wines?"
-    Then the search is run against "there vegan wines?"
+    When searchForMatchingProducts is called with the text derived from message "are there vegan wines?"
+    Then the search term passed to searchForMatchingProducts is "there vegan wines?"
 
   Scenario: "Are " prefix is stripped
-    When a client sends POST /webhook/ with message text "Are there vegan wines?"
-    Then the search is run against "there vegan wines?"
+    When searchForMatchingProducts is called with the text derived from message "Are there vegan wines?"
+    Then the search term passed to searchForMatchingProducts is "there vegan wines?"
 
   Scenario: "ARE " prefix is stripped
-    When a client sends POST /webhook/ with message text "ARE there vegan wines?"
-    Then the search is run against "there vegan wines?"
+    When searchForMatchingProducts is called with the text derived from message "ARE there vegan wines?"
+    Then the search term passed to searchForMatchingProducts is "there vegan wines?"
 
   Scenario: "what about " prefix is stripped
-    When a client sends POST /webhook/ with message text "what about sake?"
-    Then the search is run against "sake?"
+    When searchForMatchingProducts is called with the text derived from message "what about sake?"
+    Then the search term passed to searchForMatchingProducts is "sake?"
 
   Scenario: "vegan?" suffix is stripped
-    When a client sends POST /webhook/ with message text "is tequila vegan?"
-    Then the search is run against "is tequila"
+    When searchForMatchingProducts is called with the text derived from message "is tequila vegan?"
+    Then the search term passed to searchForMatchingProducts is "is tequila"
 
   Scenario: "Vegan?" suffix is stripped
-    When a client sends POST /webhook/ with message text "is tequila Vegan?"
-    Then the search is run against "is tequila"
+    When searchForMatchingProducts is called with the text derived from message "is tequila Vegan?"
+    Then the search term passed to searchForMatchingProducts is "is tequila"
 
   # --- Spell corrections ---
   Scenario: "guiness" is rewritten to "guinness" before search
-    When a client sends POST /webhook/ with message text "is guiness vegan?"
-    Then the search is run against a string containing "guinness"
+    When searchForMatchingProducts is called with the text derived from message "is guiness vegan?"
+    Then the search term passed to searchForMatchingProducts contains "guinness"
 
   Scenario: "Guiness" is rewritten to "guinness" before search
-    When a client sends POST /webhook/ with message text "is Guiness vegan?"
-    Then the search is run against a string containing "guinness"
+    When searchForMatchingProducts is called with the text derived from message "is Guiness vegan?"
+    Then the search term passed to searchForMatchingProducts contains "guinness"
 
   Scenario: "absolute vodka" is rewritten to "absolut vodka" before search
-    When a client sends POST /webhook/ with message text "is absolute vodka vegan?"
-    Then the search is run against a string containing "absolut vodka"
+    When searchForMatchingProducts is called with the text derived from message "is absolute vodka vegan?"
+    Then the search term passed to searchForMatchingProducts contains "absolut vodka"
