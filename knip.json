@@ -1,1 +1,5 @@
-{"project":["index.ts","index.test.ts"],"ignore":["slimProducts.js","secretConstants.js","node_modules/**"]}
+{
+  "entry": ["index.js"],
+  "project": ["index.js", "**/*.ts", "**/*.test.js"],
+  "ignore": ["slimProducts.js", "secretConstants.js", "node_modules/**"]
+}

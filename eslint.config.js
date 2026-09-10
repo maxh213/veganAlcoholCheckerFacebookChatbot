@@ -1,11 +1,10 @@
 export default [
-  { ignores: ["node_modules/**", "slimProducts.js", "reports/**", ".marestail/**", "coverage/**"] },
+  { ignores: ["node_modules/**", "slimProducts.js", "reports/**"] },
   {
-    files: ["index.ts", "index.test.ts"],
+    files: ["index.js", "**/*.test.js", "**/*.ts"],
     languageOptions: {
       ecmaVersion: 2020,
-      sourceType: "module",
-      parser: (await import("@typescript-eslint/parser")).default,
+      sourceType: "commonjs",
     },
     rules: {
       complexity: ["error", 4],
