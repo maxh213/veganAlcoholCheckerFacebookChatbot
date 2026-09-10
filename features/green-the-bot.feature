@@ -67,6 +67,12 @@ Feature: Vegan alcohol checker Facebook chatbot
     And one text is "Carling Black Label made in South Africa is Vegan Friendly. "
     And one text is "Carling Black Label made in England is Not Vegan Friendly. "
 
+  Scenario: Same name and status with different country appears twice
+    When Facebook POSTs a messaging envelope to /webhook/ for sender "111" with text "Peroni Nastro Azzurro"
+    Then the bot sends exactly two Graph messages to "111"
+    And one text is "Peroni Nastro Azzurro made in South Africa is Vegan Friendly. "
+    And one text is "Peroni Nastro Azzurro made in USA is Vegan Friendly. "
+
   Scenario: More than 20 matches send one weblink using the original message
     When Facebook POSTs a messaging envelope to /webhook/ for sender "111" with text "hey, is arrington vegan?"
     Then the HTTP status is 200
@@ -81,16 +87,17 @@ Feature: Vegan alcohol checker Facebook chatbot
 
   Scenario: Twenty or fewer Guinness matches send one message per result
     When Facebook POSTs a messaging envelope to /webhook/ for sender "111" with text "guinness"
-    Then the bot sends exactly 9 Graph messages to "111" in this order:
-      | Guinness is Not Vegan Friendly. |
-      | Guinness (brewed in Australia) is Vegan Friendly. |
-      | Guinness Black Lager is Not Vegan Friendly. |
-      | Guinness Blonde American Lager is Vegan Friendly. |
-      | Guinness Extra Stout - Canadian brewed and bottled is Not Vegan Friendly. |
-      | Guinness Extra Stout - UK is Not Vegan Friendly. |
-      | Guinness Foreign Extra Stout is Not Vegan Friendly. |
-      | Guinness Porter is Not Vegan Friendly. |
-      | Guinness The 1759 is Not Vegan Friendly. |
+    Then the HTTP status is 200
+    And the bot sends exactly 9 Graph messages to "111"
+    And the 1st text is "Guinness is Not Vegan Friendly. "
+    And the 2nd text is "Guinness (brewed in Australia) is Vegan Friendly. "
+    And the 3rd text is "Guinness Black Lager is Not Vegan Friendly. "
+    And the 4th text is "Guinness Blonde American Lager is Vegan Friendly. "
+    And the 5th text is "Guinness Extra Stout - Canadian brewed and bottled is Not Vegan Friendly. "
+    And the 6th text is "Guinness Extra Stout - UK is Not Vegan Friendly. "
+    And the 7th text is "Guinness Foreign Extra Stout is Not Vegan Friendly. "
+    And the 8th text is "Guinness Porter is Not Vegan Friendly. "
+    And the 9th text is "Guinness The 1759 is Not Vegan Friendly. "
 
   Scenario Outline: Filler phrases are stripped before search
     When Facebook POSTs a messaging envelope to /webhook/ for sender "111" with text "<text>"

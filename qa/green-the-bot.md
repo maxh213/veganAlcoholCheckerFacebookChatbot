@@ -37,35 +37,38 @@ Every chat POST with a messaging envelope must return HTTP 200. Replies are outb
 10. POST text `Carling Black Label`  
     Expected: two Graph texts: `Carling Black Label made in South Africa is Vegan Friendly. ` and `Carling Black Label made in England is Not Vegan Friendly. `
 
-11. POST text `hey, is arrington vegan?`  
+11. POST text `Peroni Nastro Azzurro`  
+    Expected: exactly two Graph texts: `Peroni Nastro Azzurro made in South Africa is Vegan Friendly. ` and `Peroni Nastro Azzurro made in USA is Vegan Friendly. `
+
+12. POST text `hey, is arrington vegan?`  
     Expected: one Graph text `I know a lot of drinks with that name so I made a weblink for you www.vacfb.site/a?n=hey, is arrington vegan?`
 
-12. POST text `alpine`  
+13. POST text `alpine`  
     Expected: exactly 20 Graph texts, none containing `www.vacfb.site/a?n=`
 
-13. POST text `guinness`  
-    Expected: 9 Graph texts, first `Guinness is Not Vegan Friendly. `, including `Guinness (brewed in Australia) is Vegan Friendly. `, last `Guinness The 1759 is Not Vegan Friendly. `
+14. POST text `guinness`  
+    Expected: 9 Graph texts in this order, each ending with period then space: `Guinness is Not Vegan Friendly. `; `Guinness (brewed in Australia) is Vegan Friendly. `; `Guinness Black Lager is Not Vegan Friendly. `; `Guinness Blonde American Lager is Vegan Friendly. `; `Guinness Extra Stout - Canadian brewed and bottled is Not Vegan Friendly. `; `Guinness Extra Stout - UK is Not Vegan Friendly. `; `Guinness Foreign Extra Stout is Not Vegan Friendly. `; `Guinness Porter is Not Vegan Friendly. `; `Guinness The 1759 is Not Vegan Friendly. `
 
-14. POST each of: `hey, is Widmer vegan?`, `Hey, is Widmer vegan?`, `hey is Widmer vegan?`, `Hey is Widmer vegan?`, `is Widmer vegan?`, `Is Widmer vegan?`, `IS Widmer vegan?`, `Are Widmer vegan?`, `are Widmer vegan?`, `ARE Widmer vegan?`, `what about Widmer vegan?`, `Widmer vegan?`, `Widmer Vegan?`  
+15. POST each of: `hey, is Widmer vegan?`, `Hey, is Widmer vegan?`, `hey is Widmer vegan?`, `Hey is Widmer vegan?`, `is Widmer vegan?`, `Is Widmer vegan?`, `IS Widmer vegan?`, `Are Widmer vegan?`, `are Widmer vegan?`, `ARE Widmer vegan?`, `what about Widmer vegan?`, `Widmer vegan?`, `Widmer Vegan?`  
     Expected: each sends one Graph text `Widmer is Vegan Friendly. `
 
-15. POST text `guiness`, then `Guiness`  
-    Expected: each sends the same 9 Guinness Graph texts as step 13, not the unknown-drink sentence
+16. POST text `guiness`, then `Guiness`  
+    Expected: each sends the same 9 Guinness Graph texts as step 14, not the unknown-drink sentence
 
-16. POST text `absolute vodka`  
+17. POST text `absolute vodka`  
     Expected: `Absolut Vodka made in Sweden is Vegan Friendly. `
 
-17. POST `{"entry":[{"messaging":[{"sender":{"id":"111"},"delivery":{"mids":["m1"]}}]}]}`  
+18. POST `{"entry":[{"messaging":[{"sender":{"id":"111"},"delivery":{"mids":["m1"]}}]}]}`  
     Expected: HTTP 200 and no Graph message
 
-18. POST `{"entry":[{"messaging":[]}]}`  
+19. POST `{"entry":[{"messaging":[]}]}`  
     Expected: HTTP 200 and no Graph message
 
-19. With Graph returning an error, POST text `Widmer` again  
+20. With Graph returning an error, POST text `Widmer` again  
     Expected: HTTP 200 still; Node is still running
 
-20. POST `{"object":"page","entry":null}`  
+21. POST `{"object":"page","entry":null}`  
     Expected: HTTP 500, body contains `TypeError`; Node is still running (not an uncaught crash)
 
-21. POST `{"object":"page","entry":[]}`  
+22. POST `{"object":"page","entry":[]}`  
     Expected: HTTP 500, body contains `TypeError`; Node is still running
