@@ -1,6 +1,4 @@
-//All the information is stored here because when I wrote this in a couple hours initially and I didn't want to spam barnivore with requests. 
-//It's actually pretty fast to have everything in memory too
-//TODO: get this info from a database
+var loadedProducts;
 loadedProducts = [ [ { product_name: 'Ørbæk Black',
       status: 'Vegan Friendly',
       country: 'Denmark' },
@@ -90453,3 +90451,4 @@ loadedProducts = [ [ { product_name: 'Ørbæk Black',
     { product_name: '11 Wells Minnesota Thirteen (MN13)',
       status: 'Vegan Friendly',
       country: 'USA' } ] ];
+export { loadedProducts };

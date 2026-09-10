@@ -16,5 +16,7 @@ https://github.com/jw84/messenger-bot-tutorial
 ## Environment
 
 - `PORT` — HTTP port, default 80
+- `NO_AUTO_START` — set to true to disable auto-starting server
+- `NODE_ENV` — Environment setting, set to `test` for running tests
 - `WEBHOOK_TOKEN` — Facebook webhook verify token
 - `FB_PAGE_TOKEN` — Facebook page access token
