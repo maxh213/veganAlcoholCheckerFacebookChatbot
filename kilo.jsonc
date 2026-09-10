@@ -1,0 +1,22 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "permission": {
+    "edit": {
+      "*": "allow",
+      "marestail.toml": "deny",
+      "sonar-project.properties": "deny",
+      "eslint.config.*": "deny",
+      "tsconfig*.json": "deny",
+      "vitest.config.*": "deny",
+      "knip.json": "deny",
+      "knip.jsonc": "deny",
+      "stryker.config.*": "deny",
+      "kilo.jsonc": "deny",
+      "kilo.json": "deny",
+      ".kilo/**": "deny"
+    },
+    "bash": {
+      "*": "allow"
+    }
+  }
+}
