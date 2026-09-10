@@ -1,10 +1,10 @@
 export default [
-  { ignores: ["node_modules/**", "slimProducts.js", "reports/**", ".marestail/**", "coverage/**"] },
+  { ignores: ["node_modules/**", "slimProducts.js", "reports/**"] },
   {
     files: ["index.js", "**/*.test.js", "**/*.ts"],
     languageOptions: {
       ecmaVersion: 2020,
-      sourceType: "module",
+      sourceType: "commonjs",
     },
     rules: {
       complexity: ["error", 4],
