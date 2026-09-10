@@ -247,6 +247,7 @@ describe('generateResponseString', () => {
 describe('searchForMatchingProducts', () => {
   test('returns empty array when no products match', async () => {
     const { searchForMatchingProducts } = await import('../index.js');
+    /** @type {any[][]} */
     const loadedProducts = [];
     const result = searchForMatchingProducts(loadedProducts, 'test');
     expect(result.length).toBe(1);

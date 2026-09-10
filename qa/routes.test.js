@@ -108,7 +108,8 @@ describe('hasValidEvent', () => {
 
   test('returns false for event without message.text', async () => {
     const { hasValidEvent } = await import('../index.js');
-    const event = { sender: { id: '123' }, message: {} };
+    /** @type {any} */
+    const event = { sender: { id: '123' }, message: { text: undefined } };
     expect(hasValidEvent(event)).toBe(false);
   });
 });

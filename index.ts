@@ -2,7 +2,8 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import request from 'request';
 import { WEBHOOK_TOKEN, token } from './secretConstants.js';
-import { loadedProducts } from './slimProducts.js';
+import * as slimProducts from './slimProducts.js';
+const loadedProducts: Product[][] = slimProducts.loadedProducts as Product[][];
 
 interface Product {
   product_name: string;
@@ -19,11 +20,11 @@ app.use(bodyParser.json());
 
 const getProducts = () => loadedProducts as Product[][];
 
-const routeGetRoot = (req: express.Request, res: express.Response): void => {
+const routeGetRoot = (req: Record<string, unknown>, res: { send: (v: string) => void }): void => {
   res.send('Vegan alcohol checker is up!');
 };
 
-const routeGetWebhook = (req: express.Request, res: express.Response): void => {
+const routeGetWebhook = (req: { query: Record<string, string> }, res: { send: (v: string) => void }): void => {
   const query = req.query as Record<string, string>;
   if (query['hub.verify_token'] === WEBHOOK_TOKEN) {
     res.send(query['hub.challenge']);
@@ -201,17 +202,17 @@ const handleMessagingEvents = (messagingEvents: Event[], loadedProducts: Product
   }
 };
 
-const routePostWebhook = (req: express.Request, res: express.Response): void => {
+const routePostWebhook = (req: { body: { entry: { messaging?: unknown[] }[] } }, res: { sendStatus: (code: number) => void }): void => {
   const entry = req.body.entry;
   if (entry && entry[0] && entry[0].messaging) {
-    handleMessagingEvents(entry[0].messaging, loadedProducts as Product[][]);
+    handleMessagingEvents(entry[0].messaging as Event[], loadedProducts);
   }
   res.sendStatus(200);
 };
 
-app.get('/', routeGetRoot);
-app.get('/webhook/', routeGetWebhook);
-app.post('/webhook/', routePostWebhook);
+app.get('/', routeGetRoot as (req: unknown, res: unknown) => void);
+app.get('/webhook/', routeGetWebhook as (req: unknown, res: unknown) => void);
+app.post('/webhook/', routePostWebhook as (req: unknown, res: unknown) => void);
 
 interface Message {
   text: string;
