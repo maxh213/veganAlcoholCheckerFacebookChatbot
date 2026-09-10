@@ -25,8 +25,8 @@ Every chat POST with a messaging envelope must return HTTP 200. Replies are outb
 6. POST text `Wickwar Beer`  
    Expected: one Graph text `Wickwar Beer made in England is Not Vegan Friendly. `
 
-7. POST text `WIDMER`, then `wid mer`, then `Guinness (brewed in Australia)`, then `WickwarBeer`  
-   Expected: `Widmer is Vegan Friendly. `; same again; `Guinness (brewed in Australia) is Vegan Friendly. `; `Wickwar Beer made in England is Not Vegan Friendly. `
+7. POST text `WIDMER`, then `wid mer`, then `Guinness (brewed in Australia)`, then `WickwarBeer`, then `Widmer!`, then `Wickwar.Beer`  
+   Expected: `Widmer is Vegan Friendly. `; same again; `Guinness (brewed in Australia) is Vegan Friendly. `; `Wickwar Beer made in England is Not Vegan Friendly. `; `Widmer is Vegan Friendly. `; `Wickwar Beer made in England is Not Vegan Friendly. `
 
 8. POST text `xyzzynotadrink`  
    Expected: `Unfortunately I cannot find the name of the alcohol you specified in my database, apologies.`

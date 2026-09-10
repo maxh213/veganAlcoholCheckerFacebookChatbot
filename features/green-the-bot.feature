@@ -55,6 +55,10 @@ Feature: Vegan alcohol checker Facebook chatbot
     Then the bot sends one Graph message to "111" whose text is "Guinness (brewed in Australia) is Vegan Friendly. "
     When Facebook POSTs a messaging envelope to /webhook/ for sender "111" with text "WickwarBeer"
     Then the bot sends one Graph message to "111" whose text is "Wickwar Beer made in England is Not Vegan Friendly. "
+    When Facebook POSTs a messaging envelope to /webhook/ for sender "111" with text "Widmer!"
+    Then the bot sends one Graph message to "111" whose text is "Widmer is Vegan Friendly. "
+    When Facebook POSTs a messaging envelope to /webhook/ for sender "111" with text "Wickwar.Beer"
+    Then the bot sends one Graph message to "111" whose text is "Wickwar Beer made in England is Not Vegan Friendly. "
 
   Scenario: Duplicate catalogue rows appear once
     When Facebook POSTs a messaging envelope to /webhook/ for sender "111" with text "Wynkoop Rocky Mountain Oyster Stout"
