@@ -7,7 +7,7 @@ vi.mock('request', () => ({
 }));
 
 describe('route GET /', () => {
-  test('responds with status message', async () => {
+  test('responds with exact status message', async () => {
     const { routeGetRoot } = await import('../index.js');
     const send = vi.fn();
     const res = { send };
@@ -27,7 +27,7 @@ describe('route GET /webhook/', () => {
     expect(send).toHaveBeenCalledWith('challenge-123');
   });
 
-  test('does not send challenge with invalid token', async () => {
+  test('returns error with invalid token', async () => {
     const { routeGetWebhook } = await import('../index.js');
     const send = vi.fn();
     const res = { send };
@@ -139,6 +139,19 @@ describe('sendSearchResults', () => {
     sendSearchResults('test', 'sender', loadedProducts);
     expect(request).toHaveBeenCalledTimes(20);
   });
+
+  test('sends weblink when 21 matches', async () => {
+    const { sendSearchResults } = await import('../index.js');
+    const products = [];
+    for (let i = 0; i < 21; i++) {
+      products.push({ product_name: `Test${i}`, status: 'Vegan' });
+    }
+    const loadedProducts = [products];
+    const request = (await import('request')).default;
+    request.mockClear();
+    sendSearchResults('test', 'sender', loadedProducts);
+    expect(request).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('hasValidEvent', () => {
@@ -208,12 +221,41 @@ describe('handleMessagingEvents', () => {
     routePostWebhook(req, res);
     expect(sendStatus).toHaveBeenCalledWith(200);
   });
+
+  test('handles empty messaging array', async () => {
+    const { routePostWebhook } = await import('../index.js');
+    const sendStatus = vi.fn();
+    const res = { sendStatus };
+    const req = { body: { entry: [{ messaging: [] }] } };
+    routePostWebhook(req, res);
+    expect(sendStatus).toHaveBeenCalledWith(200);
+  });
+
+  test('handles single event', async () => {
+    const { handleMessagingEvents } = await import('../index.js');
+    const sendStatus = vi.fn();
+    const res = { sendStatus };
+    const events = [
+      { sender: { id: '123' }, message: { text: 'test' } }
+    ];
+    const req = { body: { entry: [{ messaging: events }] } };
+    const { routePostWebhook } = await import('../index.js');
+    routePostWebhook(req, res);
+    expect(sendStatus).toHaveBeenCalledWith(200);
+  });
 });
 
 describe('isTestEnv', () => {
   test('returns true when NODE_ENV is test', async () => {
     const { isTestEnv } = await import('../index.js');
     expect(isTestEnv()).toBe(true);
+  });
+
+  test('returns false when NODE_ENV is not test', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const { isTestEnv } = await import('../index.js');
+    expect(isTestEnv()).toBe(false);
+    vi.unstubAllEnvs();
   });
 });
 

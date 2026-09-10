@@ -149,6 +149,12 @@ describe('matches', () => {
     const result = matches('Test Product', 'T e s t');
     expect(result).toBe(true);
   });
+
+  test('handles mixed case correctly', async () => {
+    const { matches } = await import('../index.js');
+    const result = matches('Test PRODUCT', 'test product');
+    expect(result).toBe(true);
+  });
 });
 
 describe('isDuplicate', () => {
@@ -209,6 +215,17 @@ describe('filterResponseData', () => {
     const result = filterResponseData([]);
     expect(result.length).toBe(0);
   });
+
+  test('keeps all products when none are duplicates', async () => {
+    const { filterResponseData } = await import('../index.js');
+    const data = [
+      { product_name: 'A', status: 'Vegan', country: 'Denmark' },
+      { product_name: 'B', status: 'Vegan', country: 'Denmark' },
+      { product_name: 'C', status: 'Vegan', country: 'Denmark' },
+    ];
+    const result = filterResponseData(data);
+    expect(result.length).toBe(3);
+  });
 });
 
 describe('generateResponseString', () => {
@@ -216,31 +233,25 @@ describe('generateResponseString', () => {
     const { generateResponseString } = await import('../index.js');
     const result = generateResponseString([]);
     expect(result.length).toBe(1);
-    expect(result[0]).toContain('Unfortunately I cannot find');
+    expect(result[0]).toBe('Unfortunately I cannot find the name of the alcohol you specified in my database, apologies.');
   });
 
   test('includes country when present', async () => {
     const { generateResponseString } = await import('../index.js');
     const result = generateResponseString([{ product_name: 'Test', status: 'Vegan', country: 'Denmark' }]);
-    expect(result[0]).toContain('made in Denmark');
+    expect(result[0]).toBe('Test made in Denmark is Vegan. ');
   });
 
   test('excludes country when empty string', async () => {
     const { generateResponseString } = await import('../index.js');
     const result = generateResponseString([{ product_name: 'Test', status: 'Vegan', country: '' }]);
-    expect(result[0]).not.toContain('made in');
+    expect(result[0]).toBe('Test is Vegan. ');
   });
 
   test('excludes country when undefined', async () => {
     const { generateResponseString } = await import('../index.js');
     const result = generateResponseString([{ product_name: 'Test', status: 'Vegan', country: undefined }]);
-    expect(result[0]).not.toContain('made in');
-  });
-
-  test('includes country when truthy', async () => {
-    const { generateResponseString } = await import('../index.js');
-    const result = generateResponseString([{ product_name: 'Test', status: 'Vegan', country: 'Denmark' }]);
-    expect(result[0]).toContain('made in Denmark');
+    expect(result[0]).toBe('Test is Vegan. ');
   });
 });
 
@@ -292,19 +303,19 @@ describe('buildProductString', () => {
   test('includes country when present', async () => {
     const { buildProductString } = await import('../index.js');
     const result = buildProductString({ product_name: 'Test', status: 'Vegan', country: 'Denmark' });
-    expect(result).toContain('Test made in Denmark is Vegan');
+    expect(result).toBe('Test made in Denmark is Vegan. ');
   });
 
   test('excludes country when empty string', async () => {
     const { buildProductString } = await import('../index.js');
     const result = buildProductString({ product_name: 'Test', status: 'Vegan', country: '' });
-    expect(result).toContain('Test is Vegan');
+    expect(result).toBe('Test is Vegan. ');
   });
 
   test('excludes country when undefined', async () => {
     const { buildProductString } = await import('../index.js');
     const result = buildProductString({ product_name: 'Test', status: 'Vegan', country: undefined });
-    expect(result).toContain('Test is Vegan');
+    expect(result).toBe('Test is Vegan. ');
   });
 });
 
@@ -394,19 +405,18 @@ describe('buildWeblinkResponse', () => {
   test('includes URL prefix and original text', async () => {
     const { buildWeblinkResponse } = await import('../index.js');
     const result = buildWeblinkResponse('beer');
-    expect(result).toContain('www.vacfb.site/a?n=');
-    expect(result).toContain('beer');
+    expect(result).toBe('I know a lot of drinks with that name so I made a weblink for you www.vacfb.site/a?n=beer');
   });
 
   test('includes full original text', async () => {
     const { buildWeblinkResponse } = await import('../index.js');
     const result = buildWeblinkResponse('what is this drink');
-    expect(result).toContain('what is this drink');
+    expect(result).toBe('I know a lot of drinks with that name so I made a weblink for you www.vacfb.site/a?n=what is this drink');
   });
 });
 
 describe('logMessageError', () => {
-  test('logs error message', async () => {
+  test('logs error message with exact format', async () => {
     const { logMessageError } = await import('../index.js');
     const consoleLog = vi.spyOn(console, 'log').mockImplementation();
     logMessageError('test error');
