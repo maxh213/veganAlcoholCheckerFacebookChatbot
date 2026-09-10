@@ -4,7 +4,7 @@ const request = require("request");
 
 const app = express();
 const api = Object.create(null);
-var i = 0;
+let i = 0;
 
 function cataloguePath() {
   return "./slimProducts";
@@ -337,7 +337,11 @@ function sendSearchResult() {
 function replyToEvent() {
   const event = arguments[0];
   const sender = event.sender.id;
-  if (event.message && event.message.text) {
+  const message = event.message;
+  if (!message) {
+    return;
+  }
+  if (message.text) {
     sendSearchResult(sender, event);
   }
 }

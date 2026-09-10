@@ -1,8 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import supertest from "supertest";
 
-const { requestMock } = vi.hoisted(function () {
-  return { requestMock: vi.fn() };
+const { requestMock, loadListen } = vi.hoisted(function () {
+  const loadListen = { count: 0 };
+  const mod = process.getBuiltinModule("module") as { createRequire: (p: string) => NodeRequire };
+  const req = mod.createRequire(process.cwd() + "/package.json");
+  const express = req("express");
+  express.application.listen = function () {
+    loadListen.count += 1;
+    const last = arguments[arguments.length - 1];
+    if (typeof last === "function") {
+      last();
+    }
+    return this;
+  };
+  return { requestMock: vi.fn(), loadListen: loadListen };
 });
 
 vi.mock("request", function () {
@@ -41,7 +53,13 @@ function cbFrom(args: unknown = []) {
   return emptyCb;
 }
 
+let requestCalls = 0;
+
 function defaultRequestImpl(opts = { url: "" }) {
+  requestCalls += 1;
+  if (requestCalls > 50) {
+    throw new Error("too many request calls");
+  }
   var cb = cbFrom(arguments);
   const url = opts.url || "";
   if (url.indexOf("graph.facebook.com") > -1) {
@@ -52,15 +70,47 @@ function defaultRequestImpl(opts = { url: "" }) {
 }
 
 beforeEach(function () {
-  Function("a, l", "a.listen = l")(app, function (_port = 0, cb = emptyCb) {
-    if (cb) {
+  if (loadListen.count !== 0) {
+    throw new Error("should not listen when required as a library");
+  }
+  Function("a, l", "a.listen = l")(app, function (port: unknown = 0, cb: unknown = emptyCb) {
+    if (typeof port === "boolean" || !port) {
+      throw new Error("missing port");
+    }
+    if (typeof cb !== "function") {
+      throw new Error("missing listen callback");
+    }
+    const log = console.log;
+    let logged = false;
+    console.log = function () {
+      if (arguments[0] === "running on port" && arguments[1]) {
+        logged = true;
+      }
+      return Function("l, a", "return l.apply(console, a)")(log, arguments);
+    };
+    try {
       cb();
+    } finally {
+      console.log = log;
+    }
+    if (!logged) {
+      throw new Error("listen callback did not log port");
     }
   });
+  const prevPort = process.env.PORT;
+  delete process.env.PORT;
   vac.startIfMain("lib", "main", vac.startListening);
   vac.startIfMain("main", "main", vac.startListening);
+  process.env.PORT = "3000";
+  vac.startIfMain("main", "main", vac.startListening);
+  if (prevPort === undefined) {
+    delete process.env.PORT;
+  } else {
+    process.env.PORT = prevPort;
+  }
   vac.request = requestMock;
   requestMock.mockReset();
+  requestCalls = 0;
   requestMock.mockImplementation(defaultRequestImpl);
 });
 
@@ -288,8 +338,6 @@ describe("search replies", function () {
 
   it("posts to Graph with the page token", async function () {
     const log = vi.spyOn(console, "log").mockImplementation(function () {});
-    vac.mountRoutes();
-    vac.mountRoutes();
     const res = await postText("Widmer");
     expect(res.status).toBe(200);
     expect(graphTexts()).toEqual(["Widmer is Vegan Friendly. "]);
@@ -589,7 +637,6 @@ describe("process and env", function () {
   it("reads token fallbacks from the environment", async function () {
     const prevHook = process.env.WEBHOOK_TOKEN;
     const prevPage = process.env.FB_PAGE_TOKEN;
-    const prevPort = process.env.PORT;
     try {
       delete process.env.WEBHOOK_TOKEN;
       const missing = await supertest(app).get("/webhook/").query({
@@ -610,10 +657,6 @@ describe("process and env", function () {
       process.env.FB_PAGE_TOKEN = "custom-page";
       await postText("Widmer");
       expect(graphCalls()[0].qs.access_token).toBe("custom-page");
-      delete process.env.PORT;
-      vac.mountRoutes();
-      process.env.PORT = "3000";
-      vac.mountRoutes();
     } finally {
       if (prevHook === undefined) {
         delete process.env.WEBHOOK_TOKEN;
@@ -625,12 +668,6 @@ describe("process and env", function () {
       } else {
         process.env.FB_PAGE_TOKEN = prevPage;
       }
-      if (prevPort === undefined) {
-        delete process.env.PORT;
-      } else {
-        process.env.PORT = prevPort;
-      }
-      vac.mountRoutes();
     }
   });
 });
