@@ -5,10 +5,10 @@ vi.mock("request", () => ({
   default: vi.fn((_options, callback) => callback(null, {}, {})),
 }));
 
-let app;
-let server;
-let getTextFromEvent;
-let handleWebhookMessage;
+let app: any;
+let server: any;
+let getTextFromEvent: any;
+let handleWebhookMessage: any;
 
 beforeAll(async () => {
   const mod = await import("./index.js");

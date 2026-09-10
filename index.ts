@@ -14,28 +14,28 @@ app.set("port", process.env.PORT || 80);
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-app.get("/", (_req, res) => {
+app.get("/", (_req: any, res: any) => {
   res.send("Vegan alcohol checker is up!");
 });
 
-app.get("/webhook/", (req, res) => {
+app.get("/webhook/", (req: any, res: any) => {
   if (req.query.hub_verify_token === WEBHOOK_TOKEN) {
     res.send(req.query.hub_challenge);
   }
   res.send("Error, wrong token");
 });
 
-function normalizeProductText(text) {
+function normalizeProductText(text: string): string {
   return text.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_'~()]/g, "").replace(/\s/g, "");
 }
 
-function matches(productName, searchName) {
+function matches(productName: string, searchName: string): boolean {
   const normalizedProduct = normalizeProductText(productName);
   const normalizedSearch = normalizeProductText(searchName);
   return normalizedProduct.indexOf(normalizedSearch) > -1;
 }
 
-function normalizeSearch(text) {
+function normalizeSearch(text: string): string {
   return text
     .replace("hey, is ", "")
     .replace("Hey, is ", "")
@@ -55,32 +55,32 @@ function normalizeSearch(text) {
     .replace("absolute vodka", "absolut vodka");
 }
 
-function productKey(product) {
+function productKey(product: any): string {
   return `${product.product_name}|${product.status}|${product.country}`;
 }
 
-function filterResponseData(responseData) {
-  const cleanResponseData = [];
-  const result = [];
+function filterResponseData(responseData: any[]): any[] {
+  const cleanResponseData = new Set<string>();
+  const result: any[] = [];
   for (let i = 0; i < responseData.length; i++) {
     const key = productKey(responseData[i]);
-    if (!cleanResponseData.includes(key)) {
-      cleanResponseData.push(key);
+    if (!cleanResponseData.has(key)) {
+      cleanResponseData.add(key);
       result.push(responseData[i]);
     }
   }
   return result;
 }
 
-function formatProductResponse(product) {
+function formatProductResponse(product: any): string {
   if (!product.country || product.country === "") {
     return `${product.product_name} is ${product.status}. `;
   }
   return `${product.product_name} made in ${product.country} is ${product.status}. `;
 }
 
-function generateResponseString(responseData) {
-  const response = [];
+function generateResponseArray(responseData: any[]): string[] {
+  const response: string[] = [];
   for (let i = 0; i < responseData.length; i++) {
     response.push(formatProductResponse(responseData[i]));
   }
@@ -90,8 +90,8 @@ function generateResponseString(responseData) {
   return response;
 }
 
-function searchForMatchingProducts(text) {
-  const responseData = [];
+function searchForMatchingProducts(text: string): string[] {
+  const responseData: any[] = [];
   for (let i = 0; i < loadedProducts.length; i++) {
     for (let j = 0; j < loadedProducts[i].length; j++) {
       if (matches(loadedProducts[i][j].product_name, text)) {
@@ -100,10 +100,10 @@ function searchForMatchingProducts(text) {
     }
   }
   const filtered = filterResponseData(responseData);
-  return generateResponseString(filtered);
+  return generateResponseArray(filtered);
 }
 
-function sendTextMessage(sender, text) {
+function sendTextMessage(sender: string, text: string): void {
   const messageData = { text };
   request(
     {
@@ -119,23 +119,23 @@ function sendTextMessage(sender, text) {
   );
 }
 
-function sendWeblinkResponse(sender, originalText) {
+function sendWeblinkResponse(sender: string, originalText: string): void {
   const messageResponse = `I know a lot of drinks with that name so I made a weblink for you ${URL}${originalText}`;
   sendTextMessage(sender, messageResponse);
 }
 
-function sendMultipleResponses(sender, responses) {
+function sendMultipleResponses(sender: string, responses: string[]): void {
   for (let i = 0; i < responses.length; i++) {
     sendTextMessage(sender, responses[i]);
   }
 }
 
-export function getTextFromEvent(event) {
+function getTextFromEvent(event: any): string {
   if (!event.message) return "";
   return event.message.text || "";
 }
 
-export function handleWebhookMessage(event, sender) {
+function handleWebhookMessage(event: any, sender: string): void {
   const text = normalizeSearch(getTextFromEvent(event));
   const responses = searchForMatchingProducts(text);
   if (responses.length > 20) {
@@ -145,17 +145,17 @@ export function handleWebhookMessage(event, sender) {
   sendMultipleResponses(sender, responses);
 }
 
-function extractSender(event) {
+function extractSender(event: any): string | undefined {
   if (!event?.sender) return undefined;
   return event.sender.id;
 }
 
-function extractMessageText(event) {
+function extractMessageText(event: any): string | undefined {
   if (!event?.message) return undefined;
   return event.message.text;
 }
 
-function processEvent(event) {
+function processEvent(event: any): void {
   const sender = extractSender(event);
   if (!sender) return;
   const text = extractMessageText(event);
@@ -163,7 +163,7 @@ function processEvent(event) {
   handleWebhookMessage(event, sender);
 }
 
-function extractEvents(body) {
+function extractEvents(body: any): any[] {
   const entry = body.entry;
   if (!entry) return [];
   const first = entry[0];
@@ -171,10 +171,11 @@ function extractEvents(body) {
   return first.messaging || [];
 }
 
-app.post("/webhook/", (req, res) => {
+app.post("/webhook/", (req: any, res: any) => {
   const events = extractEvents(req.body);
   events.forEach(processEvent);
   res.sendStatus(200);
 });
 
+export { app, getTextFromEvent, handleWebhookMessage };
 export default app;
