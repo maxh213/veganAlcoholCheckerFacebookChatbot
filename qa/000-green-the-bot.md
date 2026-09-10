@@ -27,7 +27,7 @@ Prerequisites: app running locally on port 3000 (or set `PORT=3000`). `FB_PAGE_T
 1. Run: `curl -s -w "\nHTTP %{http_code}\n" "http://localhost:3000/webhook/?hub.verify_token=wrong-token"`
 2. **Expected:** body is exactly `Error, wrong token` followed by `HTTP 200`.
 
-## 6. POST /webhook/ — missing entry crashes with 500
+## 6. POST /webhook/ — missing entry crashes with uncaught TypeError
 
 1. Run:
    ```bash
@@ -35,9 +35,9 @@ Prerequisites: app running locally on port 3000 (or set `PORT=3000`). `FB_PAGE_T
      -H "Content-Type: application/json" \
      -d '{"object":"page","entry":null}'
    ```
-2. **Expected:** `HTTP 500` with the Node process exiting (uncaught TypeError from `req.body.entry[0]` crashes the process).
+2. **Expected:** The Node process exits with an uncaught TypeError; the curl command receives no HTTP response (connection dropped).
 
-## 7. POST /webhook/ — empty entry array crashes with 500
+## 7. POST /webhook/ — empty entry array crashes with uncaught TypeError
 
 1. Run:
    ```bash
@@ -45,7 +45,7 @@ Prerequisites: app running locally on port 3000 (or set `PORT=3000`). `FB_PAGE_T
      -H "Content-Type: application/json" \
      -d '{"object":"page","entry":[]}'
    ```
-2. **Expected:** `HTTP 500`.
+2. **Expected:** The Node process exits with an uncaught TypeError; the curl command receives no HTTP response (connection dropped).
 
 ## 8. POST /webhook/ — normal event returns 200
 

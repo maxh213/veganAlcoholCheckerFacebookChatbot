@@ -46,7 +46,7 @@ Feature: Vegan Alcohol Checker Facebook Chatbot
       """
     Then the response status is 200
 
-  Scenario: POST /webhook/ with missing entry returns HTTP 500
+  Scenario: POST /webhook/ with missing entry causes the Node process to crash with an uncaught TypeError
     When a client sends POST /webhook/ with body:
       """
       {
@@ -54,9 +54,9 @@ Feature: Vegan Alcohol Checker Facebook Chatbot
         "entry": null
       }
       """
-    Then the response status is 500
+    Then the Node process exits with an uncaught TypeError
 
-  Scenario: POST /webhook/ with empty entry array returns HTTP 500
+  Scenario: POST /webhook/ with empty entry array causes the Node process to crash with an uncaught TypeError
     When a client sends POST /webhook/ with body:
       """
       {
@@ -64,7 +64,7 @@ Feature: Vegan Alcohol Checker Facebook Chatbot
         "entry": []
       }
       """
-    Then the response status is 500
+    Then the Node process exits with an uncaught TypeError
 
   Scenario: POST /webhook/ with empty messaging array returns 200
     When a client sends POST /webhook/ with body:
