@@ -200,37 +200,37 @@ describe("handleWebhookMessage", () => {
     sendWeblinkResponse("sender", "test");
   });
 
-  it('Incoming text with "hey, is " prefix returns Guinness result', () => {
+  it("Incoming text with \"hey, is \" prefix returns Guinness result", () => {
     const responses = searchForMatchingProducts(normalizeSearch("hey, is guinness"));
     expect(responses[0]).toContain("Guinness is Not Vegan Friendly.");
   });
 
-  it('Incoming text with "is " prefix returns Guinness result', () => {
+  it("Incoming text with \"is \" prefix returns Guinness result", () => {
     const responses = searchForMatchingProducts(normalizeSearch("is guinness"));
     expect(responses[0]).toContain("Guinness is Not Vegan Friendly.");
   });
 
-  it('Incoming text with "are " prefix returns Guinness result', () => {
+  it("Incoming text with \"are \" prefix returns Guinness result", () => {
     const responses = searchForMatchingProducts(normalizeSearch("are guinness vegan"));
     expect(responses[0]).toContain("Guinness is Not Vegan Friendly.");
   });
 
-  it('Incoming text with "what about " prefix returns Guinness result', () => {
+  it("Incoming text with \"what about \" prefix returns Guinness result", () => {
     const responses = searchForMatchingProducts(normalizeSearch("what about guinness"));
     expect(responses[0]).toContain("Guinness is Not Vegan Friendly.");
   });
 
-  it('Incoming text with "vegan?" suffix returns Guinness result', () => {
+  it("Incoming text with \"vegan?\" suffix returns Guinness result", () => {
     const responses = searchForMatchingProducts(normalizeSearch("guinness vegan?"));
     expect(responses[0]).toContain("Guinness is Not Vegan Friendly.");
   });
 
-  it('Typo "guiness" is corrected to guinness', () => {
+  it("Typo \"guiness\" is corrected to guinness", () => {
     const responses = searchForMatchingProducts(normalizeSearch("guiness"));
     expect(responses[0]).toContain("Guinness is Not Vegan Friendly.");
   });
 
-  it('Typo "absolute vodka" is corrected to absolut vodka', () => {
+  it("Typo \"absolute vodka\" is corrected to absolut vodka", () => {
     const responses = searchForMatchingProducts(normalizeSearch("absolute vodka"));
     expect(responses.some(r => r.includes("Absolut"))).toBe(true);
   });
