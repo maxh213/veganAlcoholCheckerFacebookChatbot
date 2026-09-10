@@ -613,14 +613,14 @@ describe("helpers and listen", function () {
       "http://barnivore.com/wine.json",
       "http://barnivore.com/liquor.json",
     ]);
-    expect(String(vac.punctMarks())).toBe(String(/[.,\/#!$%\^&\*;:{}=\-_'~()]/g));
+    expect(String(vac.punctMarks())).toBe(String(/[.,/#!$%^&*;:{}=\-_'~()]/g));
   });
 
   it("mounts routes once and starts only when loaded as main", async function () {
     const first = await supertest(app).get("/");
     const before = routeLayers().length;
     vac.mountRoutes();
-    expect(routeLayers().length).toBe(before);
+    expect(routeLayers()).toHaveLength(before);
     const second = await supertest(app).get("/");
     expect(first.status).toBe(200);
     expect(second.status).toBe(200);
