@@ -1,6 +1,7 @@
 fbsucks.site.key
 fbsucks.site.pem
 node_modules/
+coverage/
 
 # marestail
 .marestail/

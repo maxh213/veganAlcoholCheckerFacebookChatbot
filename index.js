@@ -1,237 +1,377 @@
-var express = require('express');
-var bodyParser = require('body-parser');
-var request = require('request');
-require("./slimProducts");
-require("./secretConstants")
-var fs = require('fs')
-    app = express();
-URL = 'www.vacfb.site/a?n=';
+const express = require("express");
+const bodyParser = require("body-parser");
+const request = require("request");
 
-app.set('port', (process.env.PORT || 80))
+const app = express();
+const api = Object.create(null);
+let i = 0;
 
-// parse application/x-www-form-urlencoded
-app.use(bodyParser.urlencoded({extended: false}))
+function cataloguePath() {
+  return "./slimProducts";
+}
 
-// parse application/json
-app.use(bodyParser.json())
+function secretsPath() {
+  return "./secretConstants";
+}
 
-// index
-app.get('/', function (req, res) {
-	res.send('Vegan alcohol checker is up!');
-})
+function loadCatalogue() {
+  require(cataloguePath());
+}
 
-// for facebook verification
-app.get('/webhook/', function (req, res) {
-	if (req.query['hub.verify_token'] === WEBHOOK_TOKEN) {
-		res.send(req.query['hub.challenge'])
-	}
-	res.send('Error, wrong token')
-})
+function secrets() {
+  return require(secretsPath());
+}
 
-var beerURL = "http://www.barnivore.com/beer.json";
-var wineURL = "http://barnivore.com/wine.json";
-var liquorURL = "http://barnivore.com/liquor.json";
-var companyURLs = [];
-var products = [];
-//outputForProductsFile();
+function webhookToken() {
+  return secrets().readWebhookToken();
+}
 
-/**
-	This function is used to refresh the products file
-**/
+function pageToken() {
+  return secrets().readPageToken();
+}
+
+function catalogueGlobal() {
+  return "loadedProducts";
+}
+
+function loadedCatalogue() {
+  loadCatalogue();
+  return Object(globalThis)[catalogueGlobal()];
+}
+
+function httpUrl() {
+  return ["http:", "", arguments[0], arguments[1]].join("/");
+}
+
+function catalogueUrls() {
+  return [httpUrl("www.barnivore.com", "beer.json"), httpUrl("barnivore.com", "wine.json"), httpUrl("barnivore.com", "liquor.json")];
+}
+
+function companyJsonUrl() {
+  return httpUrl("www.barnivore.com", "company/" + arguments[0] + ".json");
+}
+
+function urlencodedOptions() {
+  return { extended: false };
+}
+
+function weblinkBase() {
+  return "www.vacfb.site/a?n=";
+}
+
+function punctMarks() {
+  return /[.,/#!$%^&*;:{}=\-_'~()]/g;
+}
+
+function fillerPhrases() {
+  return ["hey, is ", "Hey, is ", "hey is ", "Hey is ", "is ", "Is ", "IS ", "Are ", "are ", "ARE ", "what about ", "vegan?", "Vegan?"];
+}
+
+function spellingFixes() {
+  return [
+    ["guiness", "guinness"],
+    ["Guiness", "guinness"],
+    ["absolute vodka", "absolut vodka"],
+  ];
+}
+
+function unknownDrink() {
+  return "Unfortunately I cannot find the name of the alcohol you specified in my database, apologies.";
+}
+
+function sendHealth() {
+  arguments[1].send("Vegan alcohol checker is up!");
+}
+
+function verifyWebhook() {
+  const req = arguments[0];
+  const res = arguments[1];
+  if (req.query["hub.verify_token"] === webhookToken()) {
+    res.send(req.query["hub.challenge"]);
+  }
+  res.send("Error, wrong token");
+}
+
+function receiveWebhook() {
+  const messaging = arguments[0].body.entry[0].messaging;
+  for (i = 0; i < messaging.length; i++) {
+    replyToEvent(messaging[i]);
+  }
+  arguments[1].sendStatus(200);
+}
+
+function mountRoutes() {
+  app.set("port", process.env.PORT || 80);
+  const form = urlencodedOptions();
+  const slash = String.fromCodePoint(47);
+  const hook = slash + "webhook" + slash;
+  app.use(bodyParser.urlencoded(form));
+  app.use(bodyParser.json());
+  app.get(slash, sendHealth);
+  app.get(hook, verifyWebhook);
+  app.post(hook, receiveWebhook);
+  app.listen(app.get("port"), logPort);
+  return app;
+}
+
+function onFetched() {
+  const error = arguments[0];
+  const response = arguments[1];
+  const body = arguments[2];
+  const url = arguments[3];
+  const onBody = arguments[4];
+  if (error) {
+    console.log(error);
+    return;
+  }
+  if (response.statusCode !== 200) {
+    return;
+  }
+  console.log(url + " loaded!");
+  onBody(body);
+}
+
+function fetchJson() {
+  const url = arguments[0];
+  const onBody = arguments[1];
+  api.request({ url: url, json: true }, function () {
+    onFetched(arguments[0], arguments[1], arguments[2], url, onBody);
+  });
+}
+
+function pushCompanyRow() {
+  const row = arguments[0];
+  api.companyURLs.push(companyJsonUrl(row.company.id));
+}
+
+function pushCompanyRows() {
+  arguments[0].forEach(pushCompanyRow);
+}
+
+function fetchLists() {
+  const urls = catalogueUrls();
+  fetchJson(urls.pop(), function () {
+    pushCompanyRows(arguments[0]);
+    fetchJson(urls.pop(), function () {
+      pushCompanyRows(arguments[0]);
+      fetchJson(urls.pop(), function () {
+        pushCompanyRows(arguments[0]);
+        getProductJson(api.companyURLs);
+      });
+    });
+  });
+}
+
+function mapCompanyProducts() {
+  return arguments[0].map(function () {
+    const item = arguments[0];
+    return { product_name: item.product_name, status: item.status, country: item.country };
+  });
+}
+
+function finishProducts() {
+  console.log("Product load complete.");
+  console.log(api.products);
+  api.loading = false;
+}
+
+function nextProduct() {
+  const urls = arguments[0];
+  if (urls.length === 0) {
+    finishProducts();
+    return;
+  }
+  getProductJson(urls);
+}
+
+function takeProductBody() {
+  const body = arguments[0];
+  api.products.push(mapCompanyProducts(body.company.products));
+  nextProduct(arguments[1]);
+}
+
+function getProductJson() {
+  const urls = arguments[0];
+  const url = urls.pop();
+  fetchJson(url, function () {
+    takeProductBody(arguments[0], urls);
+  });
+}
+
 function outputForProductsFile() {
-	products = []
-	companyURLs = [];
-	getCompanyJson([beerURL, wineURL, liquorURL]);
+  api.products = [];
+  api.companyURLs = [];
+  fetchLists();
 }
 
-function getCompanyJson(urls) {
-	var url = urls.pop();
-	request({
-    url: url,
-    json: true
-	}, function (error, response, body) {
-		if (error) console.log(error);
-		if (!error && response.statusCode === 200) {
-			console.log(url + " loaded!");
-			for (var i = 0; i < body.length; i++) {
-				companyURLs.push('http://www.barnivore.com/company/' + body[i].company.id + '.json');
-			}
-			if (urls.length === 0) {
-				getProductJson(companyURLs);
-			} else {
-				getCompanyJson(urls);
-			}
-		}
-	});
+function stripFillers() {
+  let out = arguments[0];
+  fillerPhrases().forEach(function () {
+    out = out.replace(arguments[0], "");
+  });
+  return out;
 }
 
-function getProductJson(urls) {
-	var url = urls.pop();
-	request({
-    url: url,
-    json: true
-	}, function (error, response, body) {
-		if (error) console.log(error);
-		if (!error && response.statusCode === 200) {
-			console.log(url + " loaded!");
-			companyProducts = [];
-			for (var i = 0; i < body.company.products.length; i++) {
-				companyProducts.push(
-					{
-						"product_name":body.company.products[i].product_name,
-						"status":body.company.products[i].status,
-						"country":body.company.products[i].country
-					}
-				);
-			}
-			products.push(companyProducts);
-			if (urls.length === 0) {
-				console.log("Product load complete.");
-				console.log(products); 
-				loading = false;
-			} else {
-				getProductJson(urls);
-			}
-		}
-	});
-}
-/**
-	end of functions used for refreshing the data
-**/
-
-function searchForMatchingProducts(text) {
-	var responseData = [];
-	for (var i = 0; i < loadedProducts.length; i++) {
-		if (loadedProducts[i].length === 1) {
-			if (matches(loadedProducts[i][0].product_name, text)) {
-				responseData.push(loadedProducts[i][0]);
-			}
-		} else {
-			for (j = 0; j < loadedProducts[i].length; j++) {
-				if (matches(loadedProducts[i][j].product_name, text)) {
-					responseData.push(loadedProducts[i][j]);
-				}
-			}
-		}
-	}
-	responseData = filterResponseData(responseData);
-	var response = generateResponseString(responseData);
-	return response;
+function applySpellingFixes() {
+  let out = arguments[0];
+  spellingFixes().forEach(function () {
+    const pair = arguments[0];
+    out = out.replace(pair[0], pair[1]);
+  });
+  return out;
 }
 
-function generateResponseString(responseData) {
-	var response = [];
-	for (var i = 0; i < responseData.length; i++) {
-		if (responseData[i].country === '' || !responseData[i].country) {
-			response.push(responseData[i].product_name + " is " + responseData[i].status + ". ");
-		} else {
-			response.push(responseData[i].product_name + " made in " + responseData[i].country + " is " + responseData[i].status + ". ");
-		}
-	}
-	if (response.length === 0) {
-		response.push("Unfortunately I cannot find the name of the alcohol you specified in my database, apologies.");
-	}
-	return response;
+function cleanQuery() {
+  return applySpellingFixes(stripFillers(arguments[0]));
 }
 
-function filterResponseData(responseData) {
-	var cleanResponseData = [];
-	for (var i = 0; i < responseData.length; i++) {
-		if (!isDuplicate(cleanResponseData, responseData[i])) {
-			cleanResponseData.push(responseData[i]);
-		}
-	}
-	return cleanResponseData;
+function stripMarks() {
+  return arguments[0].replace(punctMarks(), "").replace(/\s/g, "");
 }
 
-function isDuplicate(cleanResponseData, responseData) {
-	for (var i = 0; i < cleanResponseData.length; i++) {
-		if (cleanResponseData[i].product_name === responseData.product_name 
-			&& cleanResponseData[i].status === responseData.status
-			&& cleanResponseData[i].country === responseData.country) return true;
-	}
-	return false;
+function matches() {
+  return stripMarks(arguments[0]).toLowerCase().includes(stripMarks(arguments[1]).toLowerCase());
 }
 
-function isNameDuplicate(cleanResponseData, responseData) {
-	for (var i = 0; i < cleanResponseData.length; i++) {
-		if (cleanResponseData[i].product_name === responseData.product_name
-			&& cleanResponseData[i].status === responseData.status) 
-			return true;
-	}
-	return false;
+function collectMatches() {
+  const companies = arguments[0];
+  const text = arguments[1];
+  const found = companies.slice(0, 0);
+  companies.forEach(function () {
+    arguments[0].forEach(function () {
+      const item = arguments[0];
+      if (matches(item.product_name, text)) {
+        found.push(item);
+      }
+    });
+  });
+  return found;
 }
 
-function matches(productName, searchName) {
-	productName = productName.toLowerCase();
-	searchName = searchName.toLowerCase();
-	//get rid of punction and spaces
-	productName = productName.replace(/[.,\/#!$%\^&\*;:{}=\-_'~()]/g,""); 
-	productName = productName.replace(/\s/g, '');
-	searchName = searchName.replace(/[.,\/#!$%\^&\*;:{}=\-_'~()]/g,""); 
-	searchName = searchName.replace(/\s/g, '');
-	return (productName.indexOf(searchName) > -1);
+function sameProduct() {
+  const left = arguments[0];
+  const right = arguments[1];
+  if (left.product_name !== right.product_name) {
+    return false;
+  }
+  if (left.status !== right.status) {
+    return false;
+  }
+  return left.country === right.country;
 }
 
-// to post data
-app.post('/webhook/', function (req, res) {
-	messaging_events = req.body.entry[0].messaging;
-	for (i = 0; i < messaging_events.length; i++) {
-		event = req.body.entry[0].messaging[i];
-		sender = event.sender.id;
-		if (event.message && event.message.text) {
-			text = event.message.text;
-			text = text.replace('hey, is ','');
-			text = text.replace('Hey, is ','');
-			text = text.replace('hey is ','');
-			text = text.replace('Hey is ','');
-			text = text.replace('is ','');
-			text = text.replace('Is ','');
-			text = text.replace('IS ','');
-			text = text.replace('Are ','');
-			text = text.replace('are ','');
-			text = text.replace('ARE ','');
-			text = text.replace('what about ','');
-			text = text.replace('vegan?','');
-			text = text.replace('Vegan?','');
-			text = text.replace('guiness','guinness');
-			text = text.replace('Guiness','guinness');
-			text = text.replace('absolute vodka','absolut vodka');
-			var response = searchForMatchingProducts(text);
-			console.log(response.length)
-			if (response.length > 20) {
-				var messageResponse = "I know a lot of drinks with that name so I made a weblink for you " + URL + event.message.text;
-				sendTextMessage(sender, messageResponse);
-			} else {
-				for (var i = 0; i < response.length; i++) sendTextMessage(sender, response[i]);
-			} 
-		}
-	}
-	res.sendStatus(200);
-})
-
-function sendTextMessage(sender, text) {
-	messageData = {
-		text:text
-	}
-	request({
-		url: 'https://graph.facebook.com/v2.6/me/messages',
-		qs: {access_token:token},
-		method: 'POST',
-		json: {
-			recipient: {id:sender},
-			message: messageData,
-		}
-	}, function(error, response, body) {
-		if (error) {
-			console.log('Error sending messages: ', error)
-		} else if (response.body.error) {
-			console.log('Error: ', response.body.error)
-		}
-	})
+function isDuplicate() {
+  const item = arguments[1];
+  return arguments[0].some(function () {
+    return sameProduct(arguments[0], item);
+  });
 }
 
-app.listen(app.get('port'), function(){
-    console.log('running on port', app.get('port'))
-});
+function uniqueProducts() {
+  const rows = arguments[0];
+  const clean = rows.slice(0, 0);
+  rows.forEach(function () {
+    const item = arguments[0];
+    if (isDuplicate(clean, item)) {
+      return;
+    }
+    clean.push(item);
+  });
+  return clean;
+}
 
+function formatProductLine() {
+  const row = arguments[0];
+  if (!row.country) {
+    return row.product_name + " is " + row.status + ". ";
+  }
+  return row.product_name + " made in " + row.country + " is " + row.status + ". ";
+}
+
+function generateResponseString() {
+  const response = arguments[0].map(formatProductLine);
+  if (response.length === 0) {
+    response.push(unknownDrink());
+  }
+  return response;
+}
+
+function repliesFor() {
+  const query = cleanQuery(arguments[0]);
+  const found = uniqueProducts(collectMatches(arguments[1], query));
+  return generateResponseString(found);
+}
+
+function weblinkMessage() {
+  return "I know a lot of drinks with that name so I made a weblink for you " + weblinkBase() + arguments[0];
+}
+
+function sendEachMatch() {
+  const sender = arguments[0];
+  const lines = arguments[1];
+  for (i = 0; i < lines.length; i++) {
+    sendTextMessage(sender, lines[i]);
+  }
+}
+
+function sendSearchResult() {
+  const sender = arguments[0];
+  const event = arguments[1];
+  const response = repliesFor(event.message.text, loadedCatalogue());
+  console.log(response.length);
+  if (response.length > 20) {
+    sendTextMessage(sender, weblinkMessage(event.message.text));
+    return;
+  }
+  sendEachMatch(sender, response);
+}
+
+function replyToEvent() {
+  const event = arguments[0];
+  const sender = event.sender.id;
+  const message = event.message;
+  if (!message) {
+    return;
+  }
+  if (message.text) {
+    sendSearchResult(sender, event);
+  }
+}
+
+function onGraphResponse() {
+  const error = arguments[0];
+  const response = arguments[1];
+  if (error) {
+    console.log("Error sending messages: ", error);
+    return;
+  }
+  if (response.body.error) {
+    console.log("Error: ", response.body.error);
+  }
+}
+
+function sendTextMessage() {
+  const sender = arguments[0];
+  const text = arguments[1];
+  api.request({
+    url: "https://graph.facebook.com/v2.6/me/messages",
+    qs: { access_token: pageToken() },
+    method: "POST",
+    json: { recipient: { id: sender }, message: { text: text } },
+  }, function () {
+    onGraphResponse(arguments[0], arguments[1]);
+  });
+}
+
+function logPort() {
+  console.log("running on port", app.get("port"));
+}
+
+api.app = app;
+api.request = request;
+api.mountRoutes = mountRoutes;
+api.outputForProductsFile = outputForProductsFile;
+
+mountRoutes();
+
+module.exports = api;
