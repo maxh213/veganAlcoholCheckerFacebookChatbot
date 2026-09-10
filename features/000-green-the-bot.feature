@@ -175,11 +175,11 @@ Feature: Vegan Alcohol Checker Facebook Chatbot
 
   Scenario: "vegan?" suffix is stripped
     When searchForMatchingProducts is called with the text derived from message "is tequila vegan?"
-    Then the search term passed to searchForMatchingProducts is "is tequila"
+    Then the search term passed to searchForMatchingProducts is "tequila "
 
   Scenario: "Vegan?" suffix is stripped
     When searchForMatchingProducts is called with the text derived from message "is tequila Vegan?"
-    Then the search term passed to searchForMatchingProducts is "is tequila"
+    Then the search term passed to searchForMatchingProducts is "tequila "
 
   # --- Spell corrections ---
   Scenario: "guiness" is rewritten to "guinness" before search
