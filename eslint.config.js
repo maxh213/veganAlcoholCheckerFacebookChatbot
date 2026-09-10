@@ -1,13 +1,10 @@
-import tseslint from "@typescript-eslint/parser";
-
 export default [
-  { ignores: ["node_modules/**", "slimProducts.cjs", "reports/**", ".marestail/**"] },
+  { ignores: ["node_modules/**", "slimProducts.js", "reports/**"] },
   {
-    files: ["index.ts", "**/*.test.ts"],
+    files: ["index.js", "**/*.test.js", "**/*.ts"],
     languageOptions: {
       ecmaVersion: 2020,
-      sourceType: "module",
-      parser: tseslint,
+      sourceType: "commonjs",
     },
     rules: {
       complexity: ["error", 4],
