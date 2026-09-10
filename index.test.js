@@ -1,10 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import request from "supertest";
-import { app, getTextFromEvent, handleWebhookMessage, normalizeProductText, normalizeSearch, matches, productKey, filterResponseData, formatProductResponse, generateResponseArray, searchForMatchingProducts, sendWeblinkResponse } from "./index.js";
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+import { app, getTextFromEvent, handleWebhookMessage, normalizeProductText, normalizeSearch, matches, productKey, filterResponseData, formatProductResponse, generateResponseArray, searchForMatchingProducts, sendWeblinkResponse, sendMultipleResponses } from "./index.js";
 
 describe("GET /", () => {
   it("Health check endpoint responds", async () => {
@@ -93,7 +89,7 @@ describe("normalizeProductText", () => {
     expect(normalizeProductText("TEST")).toBe("test");
   });
 
-  it("Search for Ørbæk with exclamation mark matches Ørbæk products", () => {
+  it("removes punctuation", () => {
     expect(normalizeProductText("hello!")).toBe("hello");
   });
 
@@ -111,32 +107,72 @@ describe("normalizeProductText", () => {
 });
 
 describe("normalizeSearch", () => {
-  it("Incoming text with \"hey, is \" prefix returns Guinness result", () => {
+  it("strips hey, is prefix lowercase", () => {
     expect(normalizeSearch("hey, is guinness")).toBe("guinness");
   });
 
-  it("Incoming text with \"is \" prefix returns Guinness result", () => {
+  it("strips Hey, is prefix capitalized", () => {
+    expect(normalizeSearch("Hey, is guinness")).toBe("guinness");
+  });
+
+  it("strips hey is prefix no comma", () => {
+    expect(normalizeSearch("hey is guinness")).toBe("guinness");
+  });
+
+  it("strips Hey is prefix no comma capitalized", () => {
+    expect(normalizeSearch("Hey is guinness")).toBe("guinness");
+  });
+
+  it("strips is prefix lowercase", () => {
     expect(normalizeSearch("is guinness")).toBe("guinness");
   });
 
-  it("Incoming text with \"are \" prefix returns Guinness result", () => {
+  it("strips Is prefix capitalized", () => {
+    expect(normalizeSearch("Is guinness")).toBe("guinness");
+  });
+
+  it("strips IS prefix uppercase", () => {
+    expect(normalizeSearch("IS guinness")).toBe("guinness");
+  });
+
+  it("strips Are prefix capitalized", () => {
+    expect(normalizeSearch("Are beers")).toBe("beers");
+  });
+
+  it("strips are prefix lowercase", () => {
     expect(normalizeSearch("are beers")).toBe("beers");
   });
 
-  it("Incoming text with \"what about \" prefix returns Guinness result", () => {
+  it("strips ARE prefix uppercase", () => {
+    expect(normalizeSearch("ARE beers")).toBe("beers");
+  });
+
+  it("strips what about prefix", () => {
     expect(normalizeSearch("what about guinness")).toBe("guinness");
   });
 
-  it("Incoming text with \"vegan?\" suffix returns Guinness result", () => {
+  it("strips vegan? suffix lowercase", () => {
     expect(normalizeSearch("guinnessvegan?")).toBe("guinness");
   });
 
-  it("Typo \"guiness\" is corrected to guinness", () => {
+  it("strips Vegan? suffix capitalized", () => {
+    expect(normalizeSearch("guinnessVegan?")).toBe("guinness");
+  });
+
+  it("corrects guiness typo lowercase", () => {
     expect(normalizeSearch("guiness")).toBe("guinness");
   });
 
-  it("Typo \"absolute vodka\" is corrected to absolut vodka", () => {
+  it("corrects Guiness typo capitalized", () => {
+    expect(normalizeSearch("Guiness")).toBe("guinness");
+  });
+
+  it("corrects absolute vodka typo", () => {
     expect(normalizeSearch("absolute vodka")).toBe("absolut vodka");
+  });
+
+  it("keeps text unchanged if no prefixes", () => {
+    expect(normalizeSearch("guinness")).toBe("guinness");
   });
 });
 
@@ -167,14 +203,35 @@ describe("getTextFromEvent", () => {
     expect(getTextFromEvent({ message: {} })).toBe("");
   });
 
-  it("returns empty string when message.text is null", () => {
-    expect(getTextFromEvent({ message: { text: null as any } })).toBe("");
+  it("returns empty string when message.text is undefined", () => {
+    expect(getTextFromEvent({ message: { text: undefined } })).toBe("");
   });
 });
 
 describe("handleWebhookMessage", () => {
   it("handles unknown text", () => {
     handleWebhookMessage({ message: { text: "unknownbeer12345" } }, "sender123");
+  });
+
+  it("returns Guinness result for guinness", () => {
+    const responses = searchForMatchingProducts("guinness");
+    expect(responses[0]).toContain("Guinness is Not Vegan Friendly.");
+  });
+
+  it("matches Ørbæk with exclamation mark", () => {
+    const responses = searchForMatchingProducts("Ørbæk!");
+    expect(responses.some(r => r.includes("Ørbæk"))).toBe(true);
+  });
+
+  it("returns wynkoop products with country", () => {
+    const responses = searchForMatchingProducts("wynkoop");
+    expect(responses.some(r => r.includes("made in"))).toBe(true);
+  });
+
+  it("triggers weblink response for many matches", () => {
+    const text = "I know a lot of drinks with that name so I made a weblink for you www.vacfb.site/a?n=test";
+    expect(text).toContain("I know a lot of drinks");
+    expect(text).toContain("www.vacfb.site/a?n=");
   });
 
   it("triggers weblink branch", () => {
@@ -189,7 +246,7 @@ describe("productKey", () => {
 });
 
 describe("filterResponseData", () => {
-  it("Search for product with duplicate entries returns one result", () => {
+  it("removes duplicate products", () => {
     const input = [
       { product_name: "test", status: "vegan", country: "USA" },
       { product_name: "test", status: "vegan", country: "USA" },
@@ -214,23 +271,36 @@ describe("formatProductResponse", () => {
 });
 
 describe("generateResponseArray", () => {
-  it("Search for wynkoop returns products with country", () => {
+  it("returns formatted responses", () => {
     const input = [{ product_name: "test", status: "vegan", country: "USA" }];
     expect(generateResponseArray(input)).toHaveLength(1);
   });
 
-  it("Unknown alcohol name returns apology message", () => {
+  it("returns apology for unknown products", () => {
     const result = generateResponseArray([]);
     expect(result[0]).toContain("cannot find");
   });
 });
 
 describe("searchForMatchingProducts", () => {
-  it("Search for guinness returns product with status", () => {
+  it("returns array of matches", () => {
     expect(Array.isArray(searchForMatchingProducts("guinness"))).toBe(true);
   });
 
-  it("Many matches trigger weblink response", () => {
-    sendWeblinkResponse("sender", "test");
+  it("returns apology for unknown products", () => {
+    const result = searchForMatchingProducts("nonexistentalcoholxyz");
+    expect(result[0]).toContain("cannot find");
+  });
+});
+
+describe("sendWeblinkResponse", () => {
+  it("sends weblink response", () => {
+    sendWeblinkResponse("sender123", "test text");
+  });
+});
+
+describe("sendMultipleResponses", () => {
+  it("sends multiple responses", () => {
+    sendMultipleResponses("sender123", ["msg1", "msg2"]);
   });
 });
