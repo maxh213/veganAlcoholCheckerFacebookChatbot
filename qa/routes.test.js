@@ -47,11 +47,20 @@ describe('route POST /webhook/', () => {
     expect(sendStatus).toHaveBeenCalledWith(200);
   });
 
-  test('processes Facebook messaging envelope', async () => {
+  test('responds with 200 when entry is missing', async () => {
     const { routePostWebhook } = await import('../index.js');
     const sendStatus = vi.fn();
     const res = { sendStatus };
-    const req = { body: { entry: [{ messaging: [{ sender: { id: 'sender123' }, message: { text: 'test' } }] }] } };
+    const req = { body: {} };
+    routePostWebhook(req, res);
+    expect(sendStatus).toHaveBeenCalledWith(200);
+  });
+
+  test('responds with 200 when messaging is missing', async () => {
+    const { routePostWebhook } = await import('../index.js');
+    const sendStatus = vi.fn();
+    const res = { sendStatus };
+    const req = { body: { entry: [{}] } };
     routePostWebhook(req, res);
     expect(sendStatus).toHaveBeenCalledWith(200);
   });
@@ -70,15 +79,65 @@ describe('sendTextMessage', () => {
       expect.any(Function)
     );
   });
+
+  test('logs error when response has error', async () => {
+    const { sendTextMessage, logMessageError } = await import('../index.js');
+    const logSpy = vi.spyOn(console, 'log').mockImplementation();
+    const request = (await import('request')).default;
+    request.mockImplementation((opts, callback) => {
+      callback(null, { body: { error: 'test error' } });
+    });
+    sendTextMessage('test-sender', 'test message');
+    expect(logSpy).toHaveBeenCalledWith('Error: ', 'test error');
+    logSpy.mockRestore();
+  });
+
+  test('does not log when response has no body', async () => {
+    const { sendTextMessage, logMessageError } = await import('../index.js');
+    const logSpy = vi.spyOn(console, 'log').mockImplementation();
+    const request = (await import('request')).default;
+    request.mockImplementation((opts, callback) => {
+      callback(null, { body: undefined });
+    });
+    sendTextMessage('test-sender', 'test message');
+    expect(logSpy).not.toHaveBeenCalled();
+    logSpy.mockRestore();
+  });
 });
 
 describe('sendSearchResults', () => {
   test('sends weblink when more than 20 matches', async () => {
     const { sendSearchResults } = await import('../index.js');
     const loadedProducts = [[{ product_name: 'Test Product', status: 'Vegan' }]];
-    sendSearchResults('test', 'sender', loadedProducts);
     const request = (await import('request')).default;
+    request.mockClear();
+    sendSearchResults('test', 'sender', loadedProducts);
     expect(request).toHaveBeenCalled();
+  });
+
+  test('sends individual messages for 20 or fewer matches', async () => {
+    const { sendSearchResults } = await import('../index.js');
+    const loadedProducts = [[
+      { product_name: 'Test1', status: 'Vegan' },
+      { product_name: 'Test2', status: 'Vegan' }
+    ]];
+    const request = (await import('request')).default;
+    request.mockClear();
+    sendSearchResults('test', 'sender', loadedProducts);
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+
+  test('sends individual messages for exactly 20 matches', async () => {
+    const { sendSearchResults } = await import('../index.js');
+    const products = [];
+    for (let i = 0; i < 20; i++) {
+      products.push({ product_name: `Test${i}`, status: 'Vegan' });
+    }
+    const loadedProducts = [products];
+    const request = (await import('request')).default;
+    request.mockClear();
+    sendSearchResults('test', 'sender', loadedProducts);
+    expect(request).toHaveBeenCalledTimes(20);
   });
 });
 
@@ -108,7 +167,6 @@ describe('hasValidEvent', () => {
 
   test('returns false for event without message.text', async () => {
     const { hasValidEvent } = await import('../index.js');
-    /** @type {any} */
     const event = { sender: { id: '123' }, message: { text: undefined } };
     expect(hasValidEvent(event)).toBe(false);
   });
@@ -167,5 +225,40 @@ describe('listen', () => {
     await import('../index.js');
     expect(listen).not.toHaveBeenCalled();
     listen.mockRestore();
+  });
+});
+
+describe('startServer', () => {
+  test('calls app.listen', async () => {
+    const { app, startServer } = await import('../index.js');
+    const listen = vi.spyOn(app, 'listen').mockReturnValue({
+      on: vi.fn(),
+      close: vi.fn()
+    });
+    startServer();
+    expect(listen).toHaveBeenCalled();
+    listen.mockRestore();
+  });
+});
+
+
+describe('app setup', () => {
+  test('app exists', async () => {
+    const { app } = await import('../index.js');
+    expect(app).toBeDefined();
+  });
+
+  test('root route is registered', async () => {
+    const { app } = await import('../index.js');
+    const route = app._router.stack.find((r) => r.route && r.route.path === '/');
+    expect(route).toBeDefined();
+  });
+});
+
+describe('app configuration', () => {
+  test('app is an express app', async () => {
+    const { app } = await import('../index.js');
+    expect(app.get).toBeDefined();
+    expect(app.use).toBeDefined();
   });
 });

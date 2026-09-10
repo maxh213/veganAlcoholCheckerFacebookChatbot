@@ -1,4 +1,4 @@
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, vi } from 'vitest';
 
 describe('processText', () => {
   test('strips hey, is prefix', async () => {
@@ -247,7 +247,6 @@ describe('generateResponseString', () => {
 describe('searchForMatchingProducts', () => {
   test('returns empty array when no products match', async () => {
     const { searchForMatchingProducts } = await import('../index.js');
-    /** @type {any[][]} */
     const loadedProducts = [];
     const result = searchForMatchingProducts(loadedProducts, 'test');
     expect(result.length).toBe(1);
@@ -289,6 +288,108 @@ describe('searchForMatchingProducts', () => {
   });
 });
 
+describe('buildProductString', () => {
+  test('includes country when present', async () => {
+    const { buildProductString } = await import('../index.js');
+    const result = buildProductString({ product_name: 'Test', status: 'Vegan', country: 'Denmark' });
+    expect(result).toContain('Test made in Denmark is Vegan');
+  });
+
+  test('excludes country when empty string', async () => {
+    const { buildProductString } = await import('../index.js');
+    const result = buildProductString({ product_name: 'Test', status: 'Vegan', country: '' });
+    expect(result).toContain('Test is Vegan');
+  });
+
+  test('excludes country when undefined', async () => {
+    const { buildProductString } = await import('../index.js');
+    const result = buildProductString({ product_name: 'Test', status: 'Vegan', country: undefined });
+    expect(result).toContain('Test is Vegan');
+  });
+});
+
+describe('findMatches', () => {
+  test('returns empty array when no matches', async () => {
+    const { findMatches } = await import('../index.js');
+    const products = [{ product_name: 'Test', status: 'Vegan' }];
+    const result = findMatches(products, 'nonexistent');
+    expect(result.length).toBe(0);
+  });
+
+  test('returns matching products', async () => {
+    const { findMatches } = await import('../index.js');
+    const products = [{ product_name: 'Test Product', status: 'Vegan' }];
+    const result = findMatches(products, 'test');
+    expect(result.length).toBe(1);
+  });
+
+  test('is case insensitive', async () => {
+    const { findMatches } = await import('../index.js');
+    const products = [{ product_name: 'Test Product', status: 'Vegan' }];
+    const result = findMatches(products, 'TEST');
+    expect(result.length).toBe(1);
+  });
+});
+
+describe('processProduct', () => {
+  test('returns matching product from single item array', async () => {
+    const { processProduct } = await import('../index.js');
+    const prod = [{ product_name: 'Test Product', status: 'Vegan' }];
+    const result = processProduct(prod, 'test');
+    expect(result.length).toBe(1);
+  });
+
+  test('returns empty array when no match in single item array', async () => {
+    const { processProduct } = await import('../index.js');
+    const prod = [{ product_name: 'Test Product', status: 'Vegan' }];
+    const result = processProduct(prod, 'nonexistent');
+    expect(result.length).toBe(0);
+  });
+
+  test('returns matches from multi-product array', async () => {
+    const { processProduct } = await import('../index.js');
+    const prod = [
+      { product_name: 'Test Product', status: 'Vegan' },
+      { product_name: 'Other Product', status: 'Not Vegan' }
+    ];
+    const result = processProduct(prod, 'test');
+    expect(result.length).toBe(1);
+  });
+
+  test('returns empty array for empty product array', async () => {
+    const { processProduct } = await import('../index.js');
+    const prod = [];
+    const result = processProduct(prod, 'test');
+    expect(result.length).toBe(0);
+  });
+});
+
+describe('searchInProductsGroup', () => {
+  test('returns empty array when no matches', async () => {
+    const { searchInProductsGroup } = await import('../index.js');
+    const loadedProducts = [[{ product_name: 'Test', status: 'Vegan' }]];
+    const result = searchInProductsGroup(loadedProducts, 'nonexistent');
+    expect(result.length).toBe(0);
+  });
+
+  test('returns matches from single group', async () => {
+    const { searchInProductsGroup } = await import('../index.js');
+    const loadedProducts = [[{ product_name: 'Test Product', status: 'Vegan' }]];
+    const result = searchInProductsGroup(loadedProducts, 'test');
+    expect(result.length).toBe(1);
+  });
+
+  test('returns matches from multiple groups', async () => {
+    const { searchInProductsGroup } = await import('../index.js');
+    const loadedProducts = [
+      [{ product_name: 'Test Product', status: 'Vegan' }],
+      [{ product_name: 'Another Test', status: 'Vegan' }]
+    ];
+    const result = searchInProductsGroup(loadedProducts, 'test');
+    expect(result.length).toBe(2);
+  });
+});
+
 describe('buildWeblinkResponse', () => {
   test('includes URL prefix and original text', async () => {
     const { buildWeblinkResponse } = await import('../index.js');
@@ -303,3 +404,14 @@ describe('buildWeblinkResponse', () => {
     expect(result).toContain('what is this drink');
   });
 });
+
+describe('logMessageError', () => {
+  test('logs error message', async () => {
+    const { logMessageError } = await import('../index.js');
+    const consoleLog = vi.spyOn(console, 'log').mockImplementation();
+    logMessageError('test error');
+    expect(consoleLog).toHaveBeenCalledWith('Error: ', 'test error');
+    consoleLog.mockRestore();
+  });
+});
+

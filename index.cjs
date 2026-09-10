@@ -1,15 +1,9 @@
-import express from 'express';
-import bodyParser from 'body-parser';
-import request from 'request';
-import { WEBHOOK_TOKEN, token } from './secretConstants.js';
-import * as slimProducts from './slimProducts.js';
-const loadedProducts: Product[][] = slimProducts.loadedProducts as Product[][];
-
-interface Product {
-  product_name: string;
-  status: string;
-  country?: string;
-}
+const express = require('express');
+const bodyParser = require('body-parser');
+const request = require('request');
+const { WEBHOOK_TOKEN, token } = require('./secretConstants.js');
+const slimProducts = require('./slimProducts.js');
+const loadedProducts = slimProducts.loadedProducts;
 
 const app = express();
 const URL_PREFIX = 'www.vacfb.site/a?n=';
@@ -18,14 +12,14 @@ app.set('port', process.env.PORT || 80);
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-const getProducts = () => loadedProducts as Product[][];
+const getProducts = () => loadedProducts;
 
-const routeGetRoot = (req: Record<string, unknown>, res: { send: (v: string) => void }): void => {
+const routeGetRoot = (req, res) => {
   res.send('Vegan alcohol checker is up!');
 };
 
-const routeGetWebhook = (req: { query: Record<string, string> }, res: { send: (v: string) => void }): void => {
-  const query = req.query as Record<string, string>;
+const routeGetWebhook = (req, res) => {
+  const query = req.query;
   if (query['hub.verify_token'] === WEBHOOK_TOKEN) {
     res.send(query['hub.challenge']);
     return;
@@ -33,7 +27,7 @@ const routeGetWebhook = (req: { query: Record<string, string> }, res: { send: (v
   res.send('Error, wrong token');
 };
 
-const getText = (text: string): string => {
+const getText = (text) => {
   let result = text;
   result = result.replace('hey, is ', '');
   result = result.replace('Hey, is ', '');
@@ -54,30 +48,30 @@ const getText = (text: string): string => {
   return result;
 };
 
-const cleanString = (str: string): string => {
+const cleanString = (str) => {
   const lower = str.toLowerCase();
   const noPunct = lower.replace(/[.,\/#!$%\^&\*;:{}=\-_'~()]/g, '');
   return noPunct.replace(/\s/g, '');
 };
 
-const doStringsMatch = (p1: string, p2: string): boolean => {
+const doStringsMatch = (p1, p2) => {
   const s1 = cleanString(p1);
   const s2 = cleanString(p2);
   return s1.indexOf(s2) > -1;
 };
 
-const sameProduct = (p1: Product, p2: Product): boolean => {
+const sameProduct = (p1, p2) => {
   if (p1.product_name !== p2.product_name) return false;
   if (p1.status !== p2.status) return false;
   return p1.country === p2.country;
 };
 
-const isDuplicate = (cleanResponseData: Product[], product: Product): boolean => {
+const isDuplicate = (cleanResponseData, product) => {
   return cleanResponseData.some((p) => sameProduct(p, product));
 };
 
-const filterResponseData = (responseData: Product[]): Product[] => {
-  const cleanResponseData: Product[] = [];
+const filterResponseData = (responseData) => {
+  const cleanResponseData = [];
   for (let i = 0; i < responseData.length; i++) {
     if (!isDuplicate(cleanResponseData, responseData[i])) {
       cleanResponseData.push(responseData[i]);
@@ -86,15 +80,15 @@ const filterResponseData = (responseData: Product[]): Product[] => {
   return cleanResponseData;
 };
 
-const buildProductString = (product: Product): string => {
+const buildProductString = (product) => {
   if (!product.country || product.country === '') {
     return product.product_name + ' is ' + product.status + '. ';
   }
   return product.product_name + ' made in ' + product.country + ' is ' + product.status + '. ';
 };
 
-const generateResponseString = (responseData: Product[]): string[] => {
-  const response: string[] = [];
+const generateResponseString = (responseData) => {
+  const response = [];
   for (let i = 0; i < responseData.length; i++) {
     response.push(buildProductString(responseData[i]));
   }
@@ -104,8 +98,8 @@ const generateResponseString = (responseData: Product[]): string[] => {
   return response;
 };
 
-const findMatches = (products: Product[], text: string): Product[] => {
-  const results: Product[] = [];
+const findMatches = (products, text) => {
+  const results = [];
   for (let j = 0; j < products.length; j++) {
     if (doStringsMatch(products[j].product_name, text)) {
       results.push(products[j]);
@@ -114,15 +108,15 @@ const findMatches = (products: Product[], text: string): Product[] => {
   return results;
 };
 
-const processProduct = (prod: Product[], text: string): Product[] => {
+const processProduct = (prod, text) => {
   if (prod.length === 1) {
     return doStringsMatch(prod[0].product_name, text) ? [prod[0]] : [];
   }
   return findMatches(prod, text);
 };
 
-const searchInProductsGroup = (loadedProducts: Product[][], text: string): Product[] => {
-  const allMatches: Product[] = [];
+const searchInProductsGroup = (loadedProducts, text) => {
+  const allMatches = [];
   for (let i = 0; i < loadedProducts.length; i++) {
     const matches = processProduct(loadedProducts[i], text);
     allMatches.push(...matches);
@@ -130,21 +124,21 @@ const searchInProductsGroup = (loadedProducts: Product[][], text: string): Produ
   return allMatches;
 };
 
-const searchForMatchingProducts = (loadedProducts: Product[][], text: string): string[] => {
+const searchForMatchingProducts = (loadedProducts, text) => {
   const allMatches = searchInProductsGroup(loadedProducts, text);
   const cleaned = filterResponseData(allMatches);
   return generateResponseString(cleaned);
 };
 
-const buildWeblinkResponse = (originalText: string): string => {
+const buildWeblinkResponse = (originalText) => {
   return 'I know a lot of drinks with that name so I made a weblink for you ' + URL_PREFIX + originalText;
 };
 
-const logMessageError = (errorMsg: string): void => {
+const logMessageError = (errorMsg) => {
   console.log('Error: ', errorMsg);
 };
 
-const sendTextMessage = (sender: string, text: string): void => {
+const sendTextMessage = (sender, text) => {
   const messageData = {
     text: text
   };
@@ -156,14 +150,14 @@ const sendTextMessage = (sender: string, text: string): void => {
       recipient: { id: sender },
       message: messageData
     }
-  }, function (error: any, response: any) {
+  }, function (error, response) {
     if (response && response.body) {
       logMessageError(response.body.error);
     }
   });
 };
 
-const sendSearchResults = (text: string, sender: string, loadedProducts: Product[][]): void => {
+const sendSearchResults = (text, sender, loadedProducts) => {
   const response = searchForMatchingProducts(loadedProducts, text);
   if (response.length > 20) {
     const messageResponse = buildWeblinkResponse(text);
@@ -175,73 +169,43 @@ const sendSearchResults = (text: string, sender: string, loadedProducts: Product
   }
 };
 
-interface Event {
-  sender?: { id: string };
-  message?: { text: string };
-}
-
-const hasValidEvent = (event: Event | undefined): boolean => {
+const hasValidEvent = (event) => {
   if (!event) return false;
   if (!event.sender) return false;
   if (!event.message) return false;
   return event.message.text !== undefined;
 };
 
-const handleEvent = (event: Event, loadedProducts: Product[][]): void => {
+const handleEvent = (event, loadedProducts) => {
   if (!hasValidEvent(event)) {
     return;
   }
-  const sender = (event.sender as { id: string }).id;
-  const text = getText((event.message as { text: string }).text);
+  const sender = event.sender.id;
+  const text = getText(event.message.text);
   sendSearchResults(text, sender, loadedProducts);
 };
 
-const handleMessagingEvents = (messagingEvents: Event[], loadedProducts: Product[][]): void => {
+const handleMessagingEvents = (messagingEvents, loadedProducts) => {
   for (let i = 0; i < messagingEvents.length; i++) {
     handleEvent(messagingEvents[i], loadedProducts);
   }
 };
 
-const routePostWebhook = (req: { body: { entry: { messaging?: unknown[] }[] } }, res: { sendStatus: (code: number) => void }): void => {
+const routePostWebhook = (req, res) => {
   const entry = req.body.entry;
   if (entry && entry[0] && entry[0].messaging) {
-    handleMessagingEvents(entry[0].messaging as Event[], loadedProducts);
+    handleMessagingEvents(entry[0].messaging, loadedProducts);
   }
   res.sendStatus(200);
 };
 
-app.get('/', routeGetRoot as (req: unknown, res: unknown) => void);
-app.get('/webhook/', routeGetWebhook as (req: unknown, res: unknown) => void);
-app.post('/webhook/', routePostWebhook as (req: unknown, res: unknown) => void);
+app.get('/', routeGetRoot);
+app.get('/webhook/', routeGetWebhook);
+app.post('/webhook/', routePostWebhook);
 
-interface Message {
-  text: string;
-}
-
-const getSearchInput = (message: Message): string => {
+const getSearchInput = (message) => {
   return getText(message.text);
 };
-
-export { getProducts };
-export { getText as processText };
-export { getSearchInput };
-export { doStringsMatch as matches };
-export { isDuplicate };
-export { filterResponseData };
-export { generateResponseString };
-export { searchForMatchingProducts };
-export { buildWeblinkResponse };
-export { hasValidEvent };
-export { handleEvent };
-export { handleMessagingEvents };
-export { sendTextMessage };
-export { sendSearchResults };
-export { routeGetRoot };
-export { routeGetWebhook };
-export { routePostWebhook };
-export { app };
-export { logMessageError };
-export { isTestEnv };
 
 const isTestEnv = () => process.env.NODE_ENV === 'test';
 
@@ -250,3 +214,28 @@ if (!isTestEnv()) {
     console.log('running on port', app.get('port'));
   });
 }
+
+module.exports = {
+  getProducts,
+  getText,
+  processText: getText,
+  getSearchInput,
+  doStringsMatch,
+  matches: doStringsMatch,
+  isDuplicate,
+  filterResponseData,
+  generateResponseString,
+  searchForMatchingProducts,
+  buildWeblinkResponse,
+  hasValidEvent,
+  handleEvent,
+  handleMessagingEvents,
+  sendTextMessage,
+  sendSearchResults,
+  routeGetRoot,
+  routeGetWebhook,
+  routePostWebhook,
+  app,
+  logMessageError,
+  isTestEnv,
+};
